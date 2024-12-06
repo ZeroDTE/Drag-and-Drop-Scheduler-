@@ -1,70 +1,131 @@
-# Getting Started with Create React App
+# Drag and Drop Scheduler (App.js)
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+## Overview
+This React application is a dynamic drag-and-drop scheduler designed for managing warehouse operations and flight logistics. It allows users to organize tasks, employees, trucks, and flights across different sections (Brandabschnitte) with real-time visual feedback and deadline monitoring.
 
-## Available Scripts
+## Key Features
 
-In the project directory, you can run:
+### 1. Authentication
+- Simple password protection (current password: 1111)
+- Restricts access to unauthorized users
 
-### `npm start`
+### 2. Drag and Drop Functionality
+- Interactive drag-and-drop interface for:
+  - Tasks
+  - Employees
+  - Trucks
+  - Frachter (Cargo flights)
+  - PAX (Passenger flights)
+  - 3P (Third-party services)
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+### 3. Deadline Monitoring
+- Visual deadline tracking for Frachter
+- Color-coded warning system:
+  - Blinking red indicators for approaching deadlines
+  - Darker red for passed deadlines
+- Customizable deadline times per airline
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+### 4. Employee Status Management
+- Track employees who are:
+  - Sick
+  - On vacation
+  - Coming later (with specific times)
 
-### `npm test`
+### 5. Section Management
+- Four main sections (Brandabschnitte 3-6)
+- Dynamic subsection creation/removal
+- Flexible layout adjustment
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### 6. Data Persistence
+- Local storage backup
+- SharePoint integration for data storage
+- Schedule history tracking
+- Export functionality to CSV
 
-### `npm run build`
+## Configuration Objects
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### Airlines and Deadlines
+const frachterDeadlines = {
+  'CA': '10:00',
+  // Add more airlines and their deadlines here
+};
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+const airlineLogos = {
+  'CA': '/air-china-logo-.png',
+  'SV': '/Saudi-Arabian-Airlines-Logo.png',
+  // Add more airline logos here
+};
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### Time Slots
+const timeSlots = ['06:00', '08:00', '10:00', '12:00', '14:00', '16:00'];
+const comingLaterTimes = ['09:00', '11:00', '14:00'];
 
-### `npm run eject`
+## Visual Feedback System
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+### Deadline Warning States
+1. **Pre-Warning (60-30 minutes before deadline)**
+   - Slow blinking (1.5s interval)
+   - Light red background
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+2. **Warning (30-15 minutes before deadline)**
+   - Medium blinking (1.0s interval)
+   - Red background
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+3. **Urgent (15-0 minutes before deadline)**
+   - Fast blinking (0.5s interval)
+   - Bright red background
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+4. **Passed Deadline**
+   - Solid dark red background
+   - Bold text
+   - No blinking
 
-## Learn More
+## Usage Instructions
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+### Adding New Items
+1. Use the input field at the top
+2. Select item type from dropdown
+3. Click "Hinzufügen" to add
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+### Managing Sections
+- Use "+" to add new subsections
+- Use "-" to remove subsections
+- Minimum one subsection per Brandabschnitt
 
-### Code Splitting
+### Saving and Loading
+- Click "Speichern" to save current state
+- Previously saved states appear at bottom
+- Click "Laden" to restore a saved state
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+### Exporting Data
+- Use "Daten Exportieren" for CSV export
+- Includes all current assignments and employee statuses
 
-### Analyzing the Bundle Size
+## Development Notes
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+### State Management
+- Uses React useState for local state
+- Implements useEffect for data persistence
+- Maintains history for undo functionality
 
-### Making a Progressive Web App
+### Styling
+- Gradient backgrounds for visual hierarchy
+- Responsive design for different screen sizes
+- CSS-in-JS implementation
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+### Error Handling
+- Fallback to local storage when SharePoint fails
+- Visual feedback for save/load operations
+- Console logging for debugging
 
-### Advanced Configuration
+## Future Enhancements
+1. Additional airline deadlines
+2. More sophisticated authentication
+3. Real-time collaboration features
+4. Enhanced mobile responsiveness
+5. Additional export formats
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+## Dependencies
+- React
+- SharePoint service integration
+- Local storage API
