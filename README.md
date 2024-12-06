@@ -6,7 +6,7 @@ This React application is a dynamic drag-and-drop scheduler designed for managin
 ## Key Features
 
 ### 1. Authentication
-- Simple password protection (current password: 1111)
+- Simple password protection 
 - Restricts access to unauthorized users
 
 ### 2. Drag and Drop Functionality
