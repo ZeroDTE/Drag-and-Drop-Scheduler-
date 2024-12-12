@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import sharePointService from './services/sharePointService';
 
+
+
 const initialTasks = [
   'Wareneingang', 'Kommissionierung', 'Verpackung', 'Qualitätskontrolle',
   'Inventur', 'Versand', 'Retouren', 'Lageroptimierung', 'Wiege-Crew',
@@ -26,9 +28,8 @@ const initialPax = [
   'SV914', 'SV926', 'SV930'
 ];
 
-const initial3P = ['ACM 06:00', 'ACM 14:00', 'ACM 22:00', 'IGS 06:00', 'IGS 14:00', 'IGS 22:00', 'KAT 06:00', 'KAT 14:00', 'KAT 22:00', 'MY Cargo 06:00', 'MY Cargo 14:00', 'MY Cargo 22:00'," hey"];
+const initial3P = ['ACM 06:00', 'ACM 14:00', 'ACM 22:00', 'IGS 06:00', 'IGS 14:00', 'IGS 22:00', 'KAT 06:00', 'KAT 14:00', 'KAT 22:00', 'MY Cargo 06:00', 'MY Cargo 14:00', 'MY Cargo 22:00'];
 
-const timeSlots = ['06:00', '08:00', '10:00', '12:00', '14:00', '16:00'];
 const comingLaterTimes = ['09:00', '11:00', '14:00'];
 
 const airlineLogos = {
@@ -94,6 +95,7 @@ const calculateBlinkSpeed = (deadline) => {
 };
 
 const DragDropScheduler = () => {
+  const [viewMode, setViewMode] = useState('fo');
   const [tasks, setTasks] = useState(initialTasks);
   const [employees, setEmployees] = useState([]);
   const [trucks, setTrucks] = useState(initialTrucks);
@@ -107,7 +109,6 @@ const DragDropScheduler = () => {
   const [saveMessage, setSaveMessage] = useState('');
   const [selectedSchedule, setSelectedSchedule] = useState(null);
   const [draggedItem, setDraggedItem] = useState(null);
-  const [selectedEmployee, setSelectedEmployee] = useState('');
   const [sickEmployees, setSickEmployees] = useState([]);
   const [vacationEmployees, setVacationEmployees] = useState([]);
   const [comingLaterEmployees, setComingLaterEmployees] = useState({});
@@ -121,6 +122,8 @@ const DragDropScheduler = () => {
     brandabschnitt6: ['left']
   });
   const [scheduleHistory, setScheduleHistory] = useState([]);
+  const [selectedEmployees, setSelectedEmployees] = useState([]);
+  const [isDropdownVisible, setIsDropdownVisible] = useState(false);
 
   useEffect(() => {
     const loadSavedData = async () => {
@@ -186,16 +189,31 @@ const DragDropScheduler = () => {
         case 'threeP':
           setThreeP([...threeP, newItem]);
           break;
+        default:
+          console.warn('Unknown item type:', newItemType);
+          break;
       }
       setNewItem('');
     }
   };
 
   const handleAddEmployee = () => {
-    if (selectedEmployee && !employees.includes(selectedEmployee)) {
-      setEmployees([...employees, selectedEmployee]);
-      setSelectedEmployee('');
+    if (selectedEmployees.length > 0) {
+      const newEmployees = selectedEmployees.filter(emp => !employees.includes(emp));
+      setEmployees(prev => [...prev, ...newEmployees]);
+      setSelectedEmployees([]); // Clear selections
+      setIsDropdownVisible(false); // Hide dropdown
     }
+  };
+
+  const handleEmployeeSelection = (emp) => {
+    setSelectedEmployees(prev => {
+      if (prev.includes(emp)) {
+        return prev.filter(e => e !== emp);
+      } else {
+        return [...prev, emp];
+      }
+    });
   };
 
   const onDragStart = (e, item) => {
@@ -617,275 +635,628 @@ const DragDropScheduler = () => {
   return (
     <>
       <style>{blinkingAnimation}</style>
-
       <div style={{ 
         fontFamily: 'Arial, sans-serif', 
-        padding: '20px', 
-        maxWidth: '100%', 
+        padding: viewMode === 'fo' ? '20px' : '0',  // Remove padding in employee view
+        maxWidth: viewMode === 'fo' ? '100%' : 'none',  // Remove max-width constraint in employee view
         margin: '0 auto',
         minHeight: '100vh', 
         background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)'
       }}>
-        <img 
-          src="/fcs-logo.png" 
-          alt="FCS Logo" 
-          style={{
-            width: '150px',
-            marginBottom: '10px'
-          }}
-        />
-        <h1 style={{ color: '#333', borderBottom: '2px solid #333', paddingBottom: '10px' }}>Lager-Einsatzplan</h1>
-        
-        <div style={{ marginBottom: '20px' }}>
-          <button onClick={handleUndo} style={buttonStyle}>Rückgängig</button>
-          <button onClick={handleSave} style={buttonStyle}>Speichern</button> 
-          <button onClick={handleExportData} style={buttonStyle}>Daten Exportieren</button>
-          <button onClick={handleDeleteAllSavedPlans} style={buttonStyle}>Zeitpläne Löschen</button>
-          {saveMessage && <span style={{ marginLeft: '10px', color: 'green', fontWeight: 'bold' }}>{saveMessage}</span>}
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          marginBottom: '20px',
+          padding: viewMode === 'fo' ? '0' : '0 20px'  // Add padding only to header in employee view
+        }}>
+          <img 
+            src="/fcs-logo.png" 
+            alt="FCS Logo" 
+            style={{
+              width: '150px',
+              marginBottom: '10px'
+            }}
+          />
+          <button 
+            onClick={() => setViewMode(viewMode === 'fo' ? 'employee' : 'fo')}
+            style={{
+              ...buttonStyle,
+              backgroundColor: '#2c3e50',
+              padding: '10px 20px',
+              fontSize: '1.1em'
+            }}
+          >
+            {viewMode === 'fo' ? 'Mitarbeiter-Ansicht' : 'FO-Ansicht'}
+          </button>
         </div>
 
-        <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#f0f0f0', borderRadius: '5px' }}>
-          <h2 style={subheaderStyle}>Neuen Eintrag hinzufügen</h2>
-          <form onSubmit={handleAddItem} style={{ display: 'flex', gap: '10px' }}>
-            <input
-              type="text"
-              value={newItem}
-              onChange={(e) => setNewItem(e.target.value)}
-              placeholder="Name des neuen Eintrags"
-              style={inputStyle}
-            />
-            <select
-              value={newItemType}
-              onChange={(e) => setNewItemType(e.target.value)}
-              style={selectStyle}
-            >
-              <option value="task">Aufgabe</option>
-              <option value="truck">LKW</option>
-              <option value="frachter">Frachter</option>
-              <option value="pax">PAX</option>
-              <option value="threeP">3P</option>
-            </select>
-            <button type="submit" style={buttonStyle}>Hinzufügen</button>
-          </form>
-        </div>
-
-        <div style={{ display: 'flex', gap: '20px', marginBottom: '20px', flexWrap: 'wrap' }}>
-          <div style={{ flex: '1 1 150px', minWidth: '150px' }}>
-            <h2 style={subheaderStyle}>Aufgaben</h2>
-            <ul style={{
-              ...listStyle,
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
-              gap: '5px'
-            }}>
-              {tasks.map((task, index) => (
-                <li 
-                  key={index} 
-                  draggable 
-                  onDragStart={(e) => onDragStart(e, task)} 
-                  onTouchStart={(e) => onTouchStart(e, task)}
-                  onTouchMove={onTouchMove}
-                  onTouchEnd={() => setDraggedItem(null)}
-                  style={{
-                    ...listItemStyle,
-                    backgroundColor: 'blue',
-                    color: 'white',
-                    padding: '4px 8px',
-                    fontSize: '1em',
-                    textAlign: 'center',
-                    margin: 0
-                  }}
-                >
-                  {task}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div style={{ flex: '1 1 150px', minWidth: '150px' }}>
-            <h2 style={subheaderStyle}>Mitarbeiter</h2>
-            <div style={{ marginBottom: '10px' }}>
-              <select
-                value={selectedEmployee}
-                onChange={(e) => setSelectedEmployee(e.target.value)}
-                style={selectStyle}
-              >
-                <option value="">Mitarbeiter auswählen</option>
-                {allEmployees.map((employee, index) => (
-                  <option key={index} value={employee}>{employee}</option>
-                ))}
-              </select>
-              <button onClick={handleAddEmployee} style={buttonStyle}>Hinzufügen</button>
+        {viewMode === 'fo' ? (
+          <>
+            <h1 style={{ color: '#333', borderBottom: '2px solid #333', paddingBottom: '10px' }}>
+              Lager-Einsatzplan
+            </h1>
+            
+            <div style={{ marginBottom: '20px' }}>
+              <button onClick={handleUndo} style={buttonStyle}>Rückgängig</button>
+              <button onClick={handleSave} style={buttonStyle}>Speichern</button> 
+              <button onClick={handleExportData} style={buttonStyle}>Daten Exportieren</button>
+              <button onClick={handleDeleteAllSavedPlans} style={buttonStyle}>Zeitpläne Löschen</button>
+              {saveMessage && <span style={{ marginLeft: '10px', color: 'green', fontWeight: 'bold' }}>{saveMessage}</span>}
             </div>
-            <ul style={listStyle}>
-              {employees.map((employee, index) => (
-                <li 
-                  key={index} 
-                  draggable 
-                  onDragStart={(e) => onDragStart(e, employee)} 
-                  onTouchStart={(e) => onTouchStart(e, employee)}
-                  onTouchMove={onTouchMove}
-                  onTouchEnd={() => setDraggedItem(null)}
-                  style={{...listItemStyle, backgroundColor: 'red', color: 'white'}}
+            
+            <div style={{ marginBottom: '20px', padding: '15px', backgroundColor: '#f0f0f0', borderRadius: '5px' }}>
+              <h2 style={subheaderStyle}>Neuen Eintrag hinzufügen</h2>
+              <form onSubmit={handleAddItem} style={{ display: 'flex', gap: '10px' }}>
+                <input
+                  type="text"
+                  value={newItem}
+                  onChange={(e) => setNewItem(e.target.value)}
+                  placeholder="Name des neuen Eintrags"
+                  style={inputStyle}
+                />
+                <select
+                  value={newItemType}
+                  onChange={(e) => setNewItemType(e.target.value)}
+                  style={selectStyle}
                 >
-                  {employee}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div style={{ flex: '1 1 150px', minWidth: '150px' }}>
-            <h2 style={subheaderStyle}>LKW</h2>
-            <ul style={{
-              ...listStyle,
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
-              gap: '5px'
-            }}>
-              {trucks.map((truck, index) => (
-                <li 
-                  key={index} 
-                  draggable 
-                  onDragStart={(e) => onDragStart(e, truck)} 
-                  onTouchStart={(e) => onTouchStart(e, truck)}
-                  onTouchMove={onTouchMove}
-                  onTouchEnd={() => setDraggedItem(null)}
-                  style={{
-                    ...listItemStyle,
-                    backgroundColor: 'orange',
-                    color: 'white',
-                    padding: '4px 8px',
-                    fontSize: '1em',
-                    textAlign: 'center',
-                    margin: 0
-                  }}
-                >
-                  {truck}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div style={{ flex: '1 1 150px', minWidth: '150px' }}>
-            <h2 style={subheaderStyle}>Frachter</h2>
-            <ul style={{
-              ...listStyle,
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
-              gap: '5px'
-            }}>
-              {frachter.map((ship, index) => (
-                <li 
-                  key={index} 
-                  draggable 
-                  onDragStart={(e) => onDragStart(e, ship)} 
-                  onTouchStart={(e) => onTouchStart(e, ship)}
-                  onTouchMove={onTouchMove}
-                  onTouchEnd={() => setDraggedItem(null)}
-                  style={{
-                    ...listItemStyle,
-                    backgroundColor: 'orange',
-                    color: 'white',
-                    padding: '8px 12px',
-                    fontSize: '1em',
-                    textAlign: 'center',
-                    margin: 0,
-                    position: 'relative',
-                    overflow: 'hidden',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    minHeight: '40px'
-                  }}
-                >
-                  {Object.keys(airlineLogos).some(code => ship.startsWith(code)) && (
-                    <img 
-                      src={airlineLogos[ship.split(' ')[0]]} 
-                      alt={`${ship} logo`}
-                      style={{
-                        position: 'absolute',
-                        maxWidth: '80%',
-                        maxHeight: '80%',
-                        top: '50%',
-                        left: '50%',
-                        transform: 'translate(-50%, -50%)',
-                        objectFit: 'contain',
-                        opacity: 0.4,
-                        zIndex: 1
-                      }}
-                    />
-                  )}
-                  <span style={{ position: 'relative', zIndex: 2 }}>{ship}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div style={{ flex: '1 1 150px', minWidth: '150px' }}>
-            <h2 style={subheaderStyle}>PAX</h2>
-            <ul style={{
-              ...listStyle,
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
-              gap: '5px'
-            }}>
-              {pax.map((paxItem, index) => (
-                <li 
-                  key={index} 
-                  draggable 
-                  onDragStart={(e) => onDragStart(e, paxItem)} 
-                  onTouchStart={(e) => onTouchStart(e, paxItem)}
-                  onTouchMove={onTouchMove}
-                  onTouchEnd={() => setDraggedItem(null)}
-                  style={{
-                    ...listItemStyle,
-                    backgroundColor: 'orange',
-                    color: 'white',
-                    padding: '4px 8px',
-                    fontSize: '1em',
-                    textAlign: 'center',
-                    margin: 0
-                  }}
-                >
-                  {paxItem}
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div style={{ flex: '1 1 150px', minWidth: '150px' }}>
-            <h2 style={subheaderStyle}>3P</h2>
-            <ul style={{
-              ...listStyle,
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
-              gap: '5px'
-            }}>
-              {threeP.map((threePItem, index) => (
-                <li 
-                  key={index} 
-                  draggable 
-                  onDragStart={(e) => onDragStart(e, threePItem)} 
-                  onTouchStart={(e) => onTouchStart(e, threePItem)}
-                  onTouchMove={onTouchMove}
-                  onTouchEnd={() => setDraggedItem(null)}
-                  style={{
-                    ...listItemStyle,
-                    backgroundColor: '#6c757d',
-                    color: 'white',
-                    padding: '4px 8px',
-                    fontSize: '1em',
-                    textAlign: 'center',
-                    margin: 0
-                  }}
-                >
-                  {threePItem}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
+                  <option value="task">Aufgabe</option>
+                  <option value="truck">LKW</option>
+                  <option value="frachter">Frachter</option>
+                  <option value="pax">PAX</option>
+                  <option value="threeP">3P</option>
+                </select>
+                <button type="submit" style={buttonStyle}>Hinzufügen</button>
+              </form>
+            </div>
 
-        <div style={{ display: 'flex', gap: '20px' }}>
-          {/* Main content - Brandabschnitte */}
-          <div style={{ flex: '1 1 80%' }}>
-            <h2 style={subheaderStyle}>Aktueller Zeitplan {selectedSchedule && `(Geladen: ${selectedSchedule.date})`}</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px' }}>
+            <div style={{ display: 'flex', gap: '20px', marginBottom: '20px', flexWrap: 'wrap' }}>
+              <div style={{ flex: '1 1 150px', minWidth: '150px' }}>
+                <h2 style={subheaderStyle}>Aufgaben</h2>
+                <ul style={{
+                  ...listStyle,
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
+                  gap: '5px'
+                }}>
+                  {tasks.map((task, index) => (
+                    <li 
+                      key={index} 
+                      draggable 
+                      onDragStart={(e) => onDragStart(e, task)} 
+                      onTouchStart={(e) => onTouchStart(e, task)}
+                      onTouchMove={onTouchMove}
+                      onTouchEnd={() => setDraggedItem(null)}
+                      style={{
+                        ...listItemStyle,
+                        backgroundColor: 'blue',
+                        color: 'white',
+                        padding: '4px 8px',
+                        fontSize: '1em',
+                        textAlign: 'center',
+                        margin: 0
+                      }}
+                    >
+                      {task}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div style={{ flex: '1 1 150px', minWidth: '150px' }}>
+                <h2 style={subheaderStyle}>Mitarbeiter</h2>
+                <div style={{ marginBottom: '20px', position: 'relative' }}>
+                  <button 
+                    onClick={() => setIsDropdownVisible(!isDropdownVisible)}
+                    style={{
+                      ...buttonStyle,
+                      backgroundColor: '#4CAF50',
+                      marginRight: '10px'
+                    }}
+                  >
+                    Mitarbeiter auswählen
+                  </button>
+                  
+                  {selectedEmployees.length > 0 && (
+                    <button 
+                      onClick={handleAddEmployee}
+                      style={{
+                        ...buttonStyle,
+                        backgroundColor: '#2196F3'
+                      }}
+                    >
+                      Hinzufügen ({selectedEmployees.length})
+                    </button>
+                  )}
+
+                  {isDropdownVisible && (
+                    <div style={{
+                      position: 'absolute',
+                      top: '100%',
+                      left: 0,
+                      zIndex: 1000,
+                      backgroundColor: 'white',
+                      border: '1px solid #ccc',
+                      borderRadius: '4px',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                      maxHeight: '300px',
+                      overflowY: 'auto',
+                      width: '250px',
+                      marginTop: '5px'
+                    }}>
+                      {allEmployees
+                        .filter(emp => {
+                          // Check if employee is not in current employees list
+                          const notInEmployeesList = !employees.includes(emp);
+                          
+                          // Check if employee is not assigned to any Brandabschnitt
+                          const notInSchedule = !Object.values(schedule).some(
+                            areaItems => areaItems?.includes(emp)
+                          );
+                          
+                          return notInEmployeesList && notInSchedule;
+                        })
+                        .map((emp, index) => (
+                          <div
+                            key={index}
+                            onClick={() => handleEmployeeSelection(emp)}
+                            style={{
+                              padding: '8px 12px',
+                              cursor: 'pointer',
+                              backgroundColor: selectedEmployees.includes(emp) ? '#e3f2fd' : 'white',
+                              borderBottom: '1px solid #eee',
+                              display: 'flex',
+                              alignItems: 'center',
+                              ':hover': {
+                                backgroundColor: '#f5f5f5'
+                              }
+                            }}
+                          >
+                            <div style={{
+                              width: '16px',
+                              height: '16px',
+                              border: '2px solid #2196F3',
+                              borderRadius: '3px',
+                              marginRight: '8px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              backgroundColor: selectedEmployees.includes(emp) ? '#2196F3' : 'white'
+                            }}>
+                              {selectedEmployees.includes(emp) && (
+                                <span style={{ color: 'white', fontSize: '12px' }}>✓</span>
+                              )}
+                            </div>
+                            {emp}
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
+                <ul style={listStyle}>
+                  {employees.map((employee, index) => (
+                    <li 
+                      key={index} 
+                      draggable 
+                      onDragStart={(e) => onDragStart(e, employee)} 
+                      onTouchStart={(e) => onTouchStart(e, employee)}
+                      onTouchMove={onTouchMove}
+                      onTouchEnd={() => setDraggedItem(null)}
+                      style={{...listItemStyle, backgroundColor: 'red', color: 'white'}}
+                    >
+                      {employee}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div style={{ flex: '1 1 150px', minWidth: '150px' }}>
+                <h2 style={subheaderStyle}>LKW</h2>
+                <ul style={{
+                  ...listStyle,
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
+                  gap: '5px'
+                }}>
+                  {trucks.map((truck, index) => (
+                    <li 
+                      key={index} 
+                      draggable 
+                      onDragStart={(e) => onDragStart(e, truck)} 
+                      onTouchStart={(e) => onTouchStart(e, truck)}
+                      onTouchMove={onTouchMove}
+                      onTouchEnd={() => setDraggedItem(null)}
+                      style={{
+                        ...listItemStyle,
+                        backgroundColor: 'orange',
+                        color: 'white',
+                        padding: '4px 8px',
+                        fontSize: '1em',
+                        textAlign: 'center',
+                        margin: 0
+                      }}
+                    >
+                      {truck}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div style={{ flex: '1 1 150px', minWidth: '150px' }}>
+                <h2 style={subheaderStyle}>Frachter</h2>
+                <ul style={{
+                  ...listStyle,
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
+                  gap: '5px'
+                }}>
+                  {frachter.map((ship, index) => (
+                    <li 
+                      key={index} 
+                      draggable 
+                      onDragStart={(e) => onDragStart(e, ship)} 
+                      onTouchStart={(e) => onTouchStart(e, ship)}
+                      onTouchMove={onTouchMove}
+                      onTouchEnd={() => setDraggedItem(null)}
+                      style={{
+                        ...listItemStyle,
+                        backgroundColor: 'orange',
+                        color: 'white',
+                        padding: '8px 12px',
+                        fontSize: '1em',
+                        textAlign: 'center',
+                        margin: 0,
+                        position: 'relative',
+                        overflow: 'hidden',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minHeight: '40px'
+                      }}
+                    >
+                      {Object.keys(airlineLogos).some(code => ship.startsWith(code)) && (
+                        <img 
+                          src={airlineLogos[ship.split(' ')[0]]} 
+                          alt={`${ship} logo`}
+                          style={{
+                            position: 'absolute',
+                            maxWidth: '80%',
+                            maxHeight: '80%',
+                            top: '50%',
+                            left: '50%',
+                            transform: 'translate(-50%, -50%)',
+                            objectFit: 'contain',
+                            opacity: 0.4,
+                            zIndex: 1
+                          }}
+                        />
+                      )}
+                      <span style={{ position: 'relative', zIndex: 2 }}>{ship}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div style={{ flex: '1 1 150px', minWidth: '150px' }}>
+                <h2 style={subheaderStyle}>PAX</h2>
+                <ul style={{
+                  ...listStyle,
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
+                  gap: '5px'
+                }}>
+                  {pax.map((paxItem, index) => (
+                    <li 
+                      key={index} 
+                      draggable 
+                      onDragStart={(e) => onDragStart(e, paxItem)} 
+                      onTouchStart={(e) => onTouchStart(e, paxItem)}
+                      onTouchMove={onTouchMove}
+                      onTouchEnd={() => setDraggedItem(null)}
+                      style={{
+                        ...listItemStyle,
+                        backgroundColor: 'orange',
+                        color: 'white',
+                        padding: '4px 8px',
+                        fontSize: '1em',
+                        textAlign: 'center',
+                        margin: 0
+                      }}
+                    >
+                      {paxItem}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div style={{ flex: '1 1 150px', minWidth: '150px' }}>
+                <h2 style={subheaderStyle}>3P</h2>
+                <ul style={{
+                  ...listStyle,
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
+                  gap: '5px'
+                }}>
+                  {threeP.map((threePItem, index) => (
+                    <li 
+                      key={index} 
+                      draggable 
+                      onDragStart={(e) => onDragStart(e, threePItem)} 
+                      onTouchStart={(e) => onTouchStart(e, threePItem)}
+                      onTouchMove={onTouchMove}
+                      onTouchEnd={() => setDraggedItem(null)}
+                      style={{
+                        ...listItemStyle,
+                        backgroundColor: '#6c757d',
+                        color: 'white',
+                        padding: '4px 8px',
+                        fontSize: '1em',
+                        textAlign: 'center',
+                        margin: 0
+                      }}
+                    >
+                      {threePItem}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '20px' }}>
+              {/* Main content - Brandabschnitte */}
+              <div style={{ flex: '1 1 80%' }}>
+                <h2 style={subheaderStyle}>Aktueller Zeitplan {selectedSchedule && `(Geladen: ${selectedSchedule.date})`}</h2>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px' }}>
+                  {['brandabschnitt3', 'brandabschnitt4', 'brandabschnitt5', 'brandabschnitt6'].map(area => (
+                    <div 
+                      key={area} 
+                      style={{ 
+                        border: '2px solid #2c3e50', 
+                        borderRadius: '8px', 
+                        padding: '15px',
+                        background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)'
+                      }}
+                    >
+                      <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center',
+                        marginBottom: '15px',
+                        borderBottom: '2px solid #2c3e50',
+                        paddingBottom: '8px'
+                      }}>
+                        <h3 style={{ 
+                          margin: 0,
+                          color: '#2c3e50', 
+                          fontSize: '1.4em',
+                          textTransform: 'uppercase',
+                        }}>{area}</h3>
+                        <div style={{ display: 'flex', gap: '5px' }}>
+                          <button
+                            onClick={() => handleRemoveSection(area)}
+                            style={{
+                              ...buttonStyle,
+                              padding: '4px 8px',
+                              backgroundColor: '#dc3545',
+                              fontSize: '1.2em',
+                              opacity: sections[area].length <= 1 ? 0.5 : 1,
+                              cursor: sections[area].length <= 1 ? 'not-allowed' : 'pointer'
+                            }}
+                          >
+                            −
+                          </button>
+                          <button
+                            onClick={() => handleAddSection(area)}
+                            style={{
+                              ...buttonStyle,
+                              padding: '4px 8px',
+                              backgroundColor: '#4CAF50',
+                              fontSize: '1.2em'
+                            }}
+                          >
+                            +
+                          </button>
+                        </div>
+                      </div>
+
+                      <div style={{ 
+                        display: 'grid', 
+                        gridTemplateColumns: `repeat(${sections[area].length}, 1fr)`, 
+                        gap: '15px' 
+                      }}>
+                        {sections[area].map((section, index) => (
+                          <div
+                            key={index}
+                            style={{ 
+                              minHeight: '200px', 
+                              backgroundColor: '#ffffff', 
+                              padding: '12px', 
+                              borderRadius: '6px',
+                              border: '1px dashed #bdc3c7',
+                              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                              background: 'linear-gradient(135deg, #ffffff 0%, #f5f7fa 100%)'
+                            }}
+                            onDragOver={onDragOver}
+                            onDrop={(e) => onDrop(e, `${area}_${section}`)}
+                            onTouchEnd={(e) => onTouchEnd(e, `${area}_${section}`)}
+                          >
+                            {schedule[`${area}_${section}`]?.map((item, index) => (
+                              <div key={index} style={getItemStyle(item, `${area}_${section}`)}>
+                                {initialFrachter.includes(item) && Object.keys(airlineLogos).some(code => item.startsWith(code)) && (
+                                  <img 
+                                    src={airlineLogos[item.split(' ')[0]]} 
+                                    alt={`${item} logo`}
+                                    style={{
+                                      position: 'absolute',
+                                      maxWidth: '80%',
+                                      maxHeight: '80%',
+                                      top: '50%',
+                                      left: '50%',
+                                      transform: 'translate(-50%, -50%)',
+                                      objectFit: 'contain',
+                                      opacity: 0.4,
+                                      zIndex: 1
+                                    }}
+                                  />
+                                )}
+                                <span style={{ 
+                                  position: 'relative', 
+                                  zIndex: 2,
+                                  fontWeight: initialFrachter.includes(item) && Object.keys(airlineLogos).some(code => item.startsWith(code)) 
+                                    ? 'bold'  // Make text bold for better readability with logos
+                                    : 'normal'
+                                }}>{item}</span>
+                                <button onClick={() => handleRemoveItem(`${area}_${section}`, item)} style={{...removeButtonStyle, zIndex: 3}}>X</button>
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Sidebar - Status sections */}
+              <div style={{ flex: '0 0 20%', maxWidth: '250px' }}>
+                <div style={{ 
+                  backgroundColor: '#f8f9fa',
+                  border: '1px solid #dee2e6',
+                  borderRadius: '8px',
+                  padding: '10px',
+                  marginBottom: '10px'
+                }}>
+                  <h4 style={{ margin: '0 0 10px 0', fontSize: '0.9em', color: '#dc3545' }}>Krank</h4>
+                  <div
+                    style={{ 
+                      minHeight: '60px',
+                      backgroundColor: '#fff',
+                      padding: '8px',
+                      borderRadius: '4px',
+                      border: '1px dashed #dc3545'
+                    }}
+                    onDragOver={onDragOver}
+                    onDrop={(e) => onDrop(e, 'sick')}
+                  >
+                    {sickEmployees.map((emp, index) => (
+                      <div key={index} style={{ 
+                        marginBottom: '4px',
+                        padding: '4px',
+                        backgroundColor: '#dc3545',
+                        color: 'white',
+                        borderRadius: '3px',
+                        fontSize: '0.9em',
+                        position: 'relative'
+                      }}>
+                        {emp}
+                        <button onClick={() => {
+                          handleRemoveItem('sick', emp);
+                          setEmployees(prev => [...prev, emp]); // Add back to employees
+                        }} style={removeButtonStyle}>X</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ 
+                  backgroundColor: '#f8f9fa',
+                  border: '1px solid #dee2e6',
+                  borderRadius: '8px',
+                  padding: '10px',
+                  marginBottom: '10px'
+                }}>
+                  <h4 style={{ margin: '0 0 10px 0', fontSize: '0.9em', color: '#ffc107' }}>Urlaub</h4>
+                  <div
+                    style={{ 
+                      minHeight: '60px',
+                      backgroundColor: '#fff',
+                      padding: '8px',
+                      borderRadius: '4px',
+                      border: '1px dashed #ffc107'
+                    }}
+                    onDragOver={onDragOver}
+                    onDrop={(e) => onDrop(e, 'vacation')}
+                  >
+                    {vacationEmployees.map((emp, index) => (
+                      <div key={index} style={{ 
+                        marginBottom: '4px',
+                        padding: '4px',
+                        backgroundColor: '#ffc107',
+                        color: 'black',
+                        borderRadius: '3px',
+                        fontSize: '0.9em',
+                        position: 'relative'
+                      }}>
+                        {emp}
+                        <button onClick={() => handleRemoveItem('vacation', emp)} style={removeButtonStyle}>X</button>
+                        <button onClick={() => setEmployees(prev => [...prev, emp])} style={removeButtonStyle}>+</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ 
+                  backgroundColor: '#f8f9fa',
+                  border: '1px solid #dee2e6',
+                  borderRadius: '8px',
+                  padding: '10px'
+                }}>
+                  <h4 style={{ margin: '0 0 10px 0', fontSize: '0.9em', color: '#17a2b8' }}>Kommen noch</h4>
+                  {comingLaterTimes.map(time => (
+                    <div key={time} style={{ marginBottom: '10px' }}>
+                      <div style={{ fontSize: '0.8em', color: '#666', marginBottom: '4px' }}>{time}</div>
+                      <div
+                        style={{ 
+                          minHeight: '40px',
+                          backgroundColor: '#fff',
+                          padding: '8px',
+                          borderRadius: '4px',
+                          border: '1px dashed #17a2b8'
+                        }}
+                        onDragOver={onDragOver}
+                        onDrop={(e) => onDrop(e, time)}
+                      >
+                        {comingLaterEmployees[time]?.map((emp, index) => (
+                          <div key={index} style={{ 
+                            marginBottom: '4px',
+                            padding: '4px',
+                            backgroundColor: '#17a2b8',
+                            color: 'white',
+                            borderRadius: '3px',
+                            fontSize: '0.9em'
+                          }}>
+                            {emp}
+                            <button onClick={() => handleRemoveItem(time, emp)} style={removeButtonStyle}>X</button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ marginTop: '20px' }}>
+              <h2 style={subheaderStyle}>Gespeicherte Zeitpläne</h2>
+              <ul style={{ ...listStyle, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '10px' }}>
+                {savedSchedules.map((saved) => (
+                  <li key={saved.id} style={{ ...listItemStyle, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>{saved.date}</span>
+                    <button onClick={() => handleLoadSchedule(saved)} style={buttonStyle}>
+                      Laden
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </>
+        ) : (
+          // Simplified Employee view
+          <div style={{ padding: '0 20px' }}>  {/* Add consistent padding for content */}
+            <h2 style={subheaderStyle}>
+              Aktueller Zeitplan {selectedSchedule && `(Geladen: ${selectedSchedule.date})`}
+            </h2>
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(2, 1fr)', 
+              gap: '20px',
+              height: 'calc(100vh - 150px)'  // Use full viewport height minus header
+            }}>
               {['brandabschnitt3', 'brandabschnitt4', 'brandabschnitt5', 'brandabschnitt6'].map(area => (
                 <div 
                   key={area} 
@@ -893,7 +1264,10 @@ const DragDropScheduler = () => {
                     border: '2px solid #2c3e50', 
                     borderRadius: '8px', 
                     padding: '15px',
-                    background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)'
+                    background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+                    height: '100%',  // Use full height of grid cell
+                    display: 'flex',
+                    flexDirection: 'column'
                   }}
                 >
                   <div style={{ 
@@ -909,39 +1283,14 @@ const DragDropScheduler = () => {
                       color: '#2c3e50', 
                       fontSize: '1.4em',
                       textTransform: 'uppercase',
-                    }}>{area}</h3>
-                    <div style={{ display: 'flex', gap: '5px' }}>
-                      <button
-                        onClick={() => handleRemoveSection(area)}
-                        style={{
-                          ...buttonStyle,
-                          padding: '4px 8px',
-                          backgroundColor: '#dc3545',
-                          fontSize: '1.2em',
-                          opacity: sections[area].length <= 1 ? 0.5 : 1,
-                          cursor: sections[area].length <= 1 ? 'not-allowed' : 'pointer'
-                        }}
-                      >
-                        −
-                      </button>
-                      <button
-                        onClick={() => handleAddSection(area)}
-                        style={{
-                          ...buttonStyle,
-                          padding: '4px 8px',
-                          backgroundColor: '#4CAF50',
-                          fontSize: '1.2em'
-                        }}
-                      >
-                        +
-                      </button>
-                    </div>
+                    }}>{area.toUpperCase()}</h3>
                   </div>
 
                   <div style={{ 
                     display: 'grid', 
                     gridTemplateColumns: `repeat(${sections[area].length}, 1fr)`, 
-                    gap: '15px' 
+                    gap: '15px',
+                    flex: 1  // Take up remaining space
                   }}>
                     {sections[area].map((section, index) => (
                       <div
@@ -953,14 +1302,15 @@ const DragDropScheduler = () => {
                           borderRadius: '6px',
                           border: '1px dashed #bdc3c7',
                           boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                          background: 'linear-gradient(135deg, #ffffff 0%, #f5f7fa 100%)'
+                          background: 'linear-gradient(135deg, #ffffff 0%, #f5f7fa 100%)',
+                          height: '100%'  // Use full height of grid cell
                         }}
-                        onDragOver={onDragOver}
-                        onDrop={(e) => onDrop(e, `${area}_${section}`)}
-                        onTouchEnd={(e) => onTouchEnd(e, `${area}_${section}`)}
                       >
                         {schedule[`${area}_${section}`]?.map((item, index) => (
-                          <div key={index} style={getItemStyle(item, `${area}_${section}`)}>
+                          <div 
+                            key={index} 
+                            style={getItemStyle(item, `${area}_${section}`)}
+                          >
                             {initialFrachter.includes(item) && Object.keys(airlineLogos).some(code => item.startsWith(code)) && (
                               <img 
                                 src={airlineLogos[item.split(' ')[0]]} 
@@ -982,10 +1332,9 @@ const DragDropScheduler = () => {
                               position: 'relative', 
                               zIndex: 2,
                               fontWeight: initialFrachter.includes(item) && Object.keys(airlineLogos).some(code => item.startsWith(code)) 
-                                ? 'bold'  // Make text bold for better readability with logos
+                                ? 'bold'
                                 : 'normal'
                             }}>{item}</span>
-                            <button onClick={() => handleRemoveItem(`${area}_${section}`, item)} style={{...removeButtonStyle, zIndex: 3}}>X</button>
                           </div>
                         ))}
                       </div>
@@ -995,139 +1344,7 @@ const DragDropScheduler = () => {
               ))}
             </div>
           </div>
-
-          {/* Sidebar - Status sections */}
-          <div style={{ flex: '0 0 20%', maxWidth: '250px' }}>
-            <div style={{ 
-              backgroundColor: '#f8f9fa',
-              border: '1px solid #dee2e6',
-              borderRadius: '8px',
-              padding: '10px',
-              marginBottom: '10px'
-            }}>
-              <h4 style={{ margin: '0 0 10px 0', fontSize: '0.9em', color: '#dc3545' }}>Krank</h4>
-              <div
-                style={{ 
-                  minHeight: '60px',
-                  backgroundColor: '#fff',
-                  padding: '8px',
-                  borderRadius: '4px',
-                  border: '1px dashed #dc3545'
-                }}
-                onDragOver={onDragOver}
-                onDrop={(e) => onDrop(e, 'sick')}
-              >
-                {sickEmployees.map((emp, index) => (
-                  <div key={index} style={{ 
-                    marginBottom: '4px',
-                    padding: '4px',
-                    backgroundColor: '#dc3545',
-                    color: 'white',
-                    borderRadius: '3px',
-                    fontSize: '0.9em',
-                    position: 'relative'
-                  }}>
-                    {emp}
-                    <button onClick={() => {
-                      handleRemoveItem('sick', emp);
-                      setEmployees(prev => [...prev, emp]); // Add back to employees
-                    }} style={removeButtonStyle}>X</button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div style={{ 
-              backgroundColor: '#f8f9fa',
-              border: '1px solid #dee2e6',
-              borderRadius: '8px',
-              padding: '10px',
-              marginBottom: '10px'
-            }}>
-              <h4 style={{ margin: '0 0 10px 0', fontSize: '0.9em', color: '#ffc107' }}>Urlaub</h4>
-              <div
-                style={{ 
-                  minHeight: '60px',
-                  backgroundColor: '#fff',
-                  padding: '8px',
-                  borderRadius: '4px',
-                  border: '1px dashed #ffc107'
-                }}
-                onDragOver={onDragOver}
-                onDrop={(e) => onDrop(e, 'vacation')}
-              >
-                {vacationEmployees.map((emp, index) => (
-                  <div key={index} style={{ 
-                    marginBottom: '4px',
-                    padding: '4px',
-                    backgroundColor: '#ffc107',
-                    color: 'black',
-                    borderRadius: '3px',
-                    fontSize: '0.9em',
-                    position: 'relative'
-                  }}>
-                    {emp}
-                    <button onClick={() => handleRemoveItem('vacation', emp)} style={removeButtonStyle}>X</button>
-                    <button onClick={() => setEmployees(prev => [...prev, emp])} style={removeButtonStyle}>+</button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div style={{ 
-              backgroundColor: '#f8f9fa',
-              border: '1px solid #dee2e6',
-              borderRadius: '8px',
-              padding: '10px'
-            }}>
-              <h4 style={{ margin: '0 0 10px 0', fontSize: '0.9em', color: '#17a2b8' }}>Kommen noch</h4>
-              {comingLaterTimes.map(time => (
-                <div key={time} style={{ marginBottom: '10px' }}>
-                  <div style={{ fontSize: '0.8em', color: '#666', marginBottom: '4px' }}>{time}</div>
-                  <div
-                    style={{ 
-                      minHeight: '40px',
-                      backgroundColor: '#fff',
-                      padding: '8px',
-                      borderRadius: '4px',
-                      border: '1px dashed #17a2b8'
-                    }}
-                    onDragOver={onDragOver}
-                    onDrop={(e) => onDrop(e, time)}
-                  >
-                    {comingLaterEmployees[time]?.map((emp, index) => (
-                      <div key={index} style={{ 
-                        marginBottom: '4px',
-                        padding: '4px',
-                        backgroundColor: '#17a2b8',
-                        color: 'white',
-                        borderRadius: '3px',
-                        fontSize: '0.9em'
-                      }}>
-                        {emp}
-                        <button onClick={() => handleRemoveItem(time, emp)} style={removeButtonStyle}>X</button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div style={{ marginTop: '20px' }}>
-          <h2 style={subheaderStyle}>Gespeicherte Zeitpläne</h2>
-          <ul style={{ ...listStyle, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '10px' }}>
-            {savedSchedules.map((saved) => (
-              <li key={saved.id} style={{ ...listItemStyle, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>{saved.date}</span>
-                <button onClick={() => handleLoadSchedule(saved)} style={buttonStyle}>
-                  Laden
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
+        )}
       </div>
     </>
   );
