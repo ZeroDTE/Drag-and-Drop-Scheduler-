@@ -541,6 +541,12 @@ const DragDropScheduler = () => {
     return baseStyle;
   };
 
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      handleLogin();
+    }
+  };
+
   if (!isAuthenticated) {
     return (
       <div style={{ 
@@ -576,6 +582,7 @@ const DragDropScheduler = () => {
               type="password"
               value={passwordInput}
               onChange={(e) => setPasswordInput(e.target.value)}
+              onKeyPress={handleKeyPress}
               placeholder="Passwort eingeben"
               style={{ 
                 width: '100%',
