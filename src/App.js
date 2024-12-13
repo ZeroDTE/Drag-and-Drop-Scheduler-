@@ -124,6 +124,7 @@ const DragDropScheduler = () => {
   const [scheduleHistory, setScheduleHistory] = useState([]);
   const [selectedEmployees, setSelectedEmployees] = useState([]);
   const [isDropdownVisible, setIsDropdownVisible] = useState(false);
+  const [pauseEmployees, setPauseEmployees] = useState([]);
 
   useEffect(() => {
     const loadSavedData = async () => {
@@ -218,6 +219,7 @@ const DragDropScheduler = () => {
 
   const onDragStart = (e, item) => {
     e.dataTransfer.setData('text/plain', item);
+    e.dataTransfer.effectAllowed = 'move';
     setDraggedItem(item);
   };
 
@@ -254,21 +256,31 @@ const DragDropScheduler = () => {
 
   const onDragOver = (e) => {
     e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
   };
 
   const onDrop = (e, area) => {
     e.preventDefault();
-    const item = e.dataTransfer.getData('text');
-    
-    if ((area === 'sick' || area === 'vacation') && !allEmployees.includes(item)) {
+    const item = draggedItem; // Use draggedItem instead of getData
+
+    // Guard clause - if no item is being dragged, return early
+    if (!item) return;
+
+    // Only allow employees in special areas
+    if ((area === 'sick' || area === 'vacation' || area === 'pause' || comingLaterTimes.includes(area)) 
+        && !allEmployees.includes(item)) {
       return;
     }
-    
+
+    // Handle special areas
     if (area === 'sick') {
       setSickEmployees(prev => [...prev, item]);
       setEmployees(prev => prev.filter(emp => emp !== item));
     } else if (area === 'vacation') {
       setVacationEmployees(prev => [...prev, item]);
+      setEmployees(prev => prev.filter(emp => emp !== item));
+    } else if (area === 'pause') {
+      setPauseEmployees(prev => [...prev, item]);
       setEmployees(prev => prev.filter(emp => emp !== item));
     } else if (comingLaterTimes.includes(area)) {
       setComingLaterEmployees(prev => ({
@@ -277,14 +289,19 @@ const DragDropScheduler = () => {
       }));
       setEmployees(prev => prev.filter(emp => emp !== item));
     } else {
+      // Handle normal areas (brandabschnitte)
       setSchedule(prev => ({
         ...prev,
         [area]: [...(prev[area] || []), item]
       }));
-      if (initialTrucks.includes(item)) {
-        setTrucks(prev => prev.filter(truck => truck !== item));
-      } else if (allEmployees.includes(item)) {
+
+      // Remove from original list
+      if (allEmployees.includes(item)) {
         setEmployees(prev => prev.filter(emp => emp !== item));
+      } else if (initialTasks.includes(item)) {
+        setTasks(prev => prev.filter(task => task !== item));
+      } else if (initialTrucks.includes(item)) {
+        setTrucks(prev => prev.filter(truck => truck !== item));
       } else if (initialFrachter.includes(item)) {
         setFrachter(prev => prev.filter(f => f !== item));
       } else if (initialPax.includes(item)) {
@@ -293,43 +310,45 @@ const DragDropScheduler = () => {
         setThreeP(prev => prev.filter(tp => tp !== item));
       }
     }
-    updateSchedule(
-      {
-        ...schedule,
-        [area]: [...(schedule[area] || []), item]
-      },
-      sickEmployees,
-      vacationEmployees,
-      comingLaterEmployees
-    );
+
+    // Clear draggedItem after drop
+    setDraggedItem(null);
   };
 
   const handleRemoveItem = (area, item) => {
     if (area === 'sick') {
       setSickEmployees(prev => prev.filter(emp => emp !== item));
+      setEmployees(prev => prev.includes(item) ? prev : [...prev, item]);
     } else if (area === 'vacation') {
       setVacationEmployees(prev => prev.filter(emp => emp !== item));
+      setEmployees(prev => prev.includes(item) ? prev : [...prev, item]);
+    } else if (area === 'pause') {
+      setPauseEmployees(prev => prev.filter(emp => emp !== item));
+      setEmployees(prev => prev.includes(item) ? prev : [...prev, item]);
     } else if (comingLaterTimes.includes(area)) {
       setComingLaterEmployees(prev => ({
         ...prev,
         [area]: prev[area].filter(emp => emp !== item)
       }));
+      setEmployees(prev => prev.includes(item) ? prev : [...prev, item]);
     } else {
       setSchedule(prev => ({
         ...prev,
         [area]: prev[area].filter(i => i !== item)
       }));
+      
+      // Handle adding back to appropriate list without duplicates
       if (initialTasks.includes(item) && !tasks.includes(item)) {
         setTasks(prev => [...prev, item]);
-      } else if (allEmployees.includes(item)) {
+      } else if (allEmployees.includes(item) && !employees.includes(item)) {
         setEmployees(prev => [...prev, item]);
       } else if (initialTrucks.includes(item) && !trucks.includes(item)) {
         setTrucks(prev => [...prev, item]);
-      } else if (initialFrachter.includes(item)) {
+      } else if (initialFrachter.includes(item) && !frachter.includes(item)) {
         setFrachter(prev => [...prev, item]);
-      } else if (initialPax.includes(item)) {
+      } else if (initialPax.includes(item) && !pax.includes(item)) {
         setPax(prev => [...prev, item]);
-      } else if (initial3P.includes(item)) {
+      } else if (initial3P.includes(item) && !threeP.includes(item)) {
         setThreeP(prev => [...prev, item]);
       }
     }
@@ -359,6 +378,7 @@ const DragDropScheduler = () => {
         schedule,
         sickEmployees,
         vacationEmployees,
+        pauseEmployees,
         comingLaterEmployees,
         tasks,
         employees,
@@ -382,6 +402,7 @@ const DragDropScheduler = () => {
       schedule,
       sickEmployees,
       vacationEmployees,
+      pauseEmployees,
       comingLaterEmployees
     };
 
@@ -407,6 +428,7 @@ const DragDropScheduler = () => {
     setSchedule(savedSchedule.schedule);
     setSickEmployees(savedSchedule.sickEmployees || []);
     setVacationEmployees(savedSchedule.vacationEmployees || []);
+    setPauseEmployees(savedSchedule.pauseEmployees || []);
     setComingLaterEmployees(savedSchedule.comingLaterEmployees || {});
     setSelectedSchedule(savedSchedule);
   };
@@ -417,6 +439,7 @@ const DragDropScheduler = () => {
       schedule,
       sickEmployees,
       vacationEmployees,
+      pauseEmployees,
       comingLaterEmployees
     };
 
@@ -442,6 +465,8 @@ const DragDropScheduler = () => {
       ['Kranke Mitarbeiter', '', sickEmployees.join(', ')],
       // Add vacation employees
       ['Mitarbeiter im Urlaub', '', vacationEmployees.join(', ')],
+      // Add pause employees
+      ['Mitarbeiter in Pause', '', pauseEmployees.join(', ')],
       // Add employees coming later
       ...Object.entries(comingLaterEmployees).map(([time, emps]) => 
         [`Später kommend (${time})`, '', emps.join(', ')]
@@ -531,11 +556,18 @@ const DragDropScheduler = () => {
           return {
             ...baseStyle,
             animation: `blink ${blinkSpeed} infinite`,
-            backgroundColor: '#ff4444', // Set initial background color
-            color: 'white', // Ensure text is visible on red background
+            backgroundColor: '#ff4444',
+            color: 'white',
           };
         }
       }
+      // If it's a Frachter but not blinking, keep the original Frachter styling
+      return {
+        ...baseStyle,
+        backgroundColor: '#ffffff',  // or whatever color you want for Frachter
+        color: 'black',
+        border: '1px solid #ddd'
+      };
     }
 
     return baseStyle;
@@ -1191,7 +1223,6 @@ const DragDropScheduler = () => {
                       }}>
                         {emp}
                         <button onClick={() => handleRemoveItem('vacation', emp)} style={removeButtonStyle}>X</button>
-                        <button onClick={() => setEmployees(prev => [...prev, emp])} style={removeButtonStyle}>+</button>
                       </div>
                     ))}
                   </div>
@@ -1234,6 +1265,45 @@ const DragDropScheduler = () => {
                       </div>
                     </div>
                   ))}
+                </div>
+
+                <div style={{ 
+                  backgroundColor: '#f8f9fa',
+                  border: '1px solid #dee2e6',
+                  borderRadius: '8px',
+                  padding: '10px',
+                  marginBottom: '10px'
+                }}>
+                  <h4 style={{ margin: '0 0 10px 0', fontSize: '0.9em', color: '#6c757d' }}>Pause</h4>
+                  <div
+                    style={{ 
+                      minHeight: '60px',
+                      backgroundColor: '#fff',
+                      padding: '8px',
+                      borderRadius: '4px',
+                      border: '1px dashed #6c757d'
+                    }}
+                    onDragOver={onDragOver}
+                    onDrop={(e) => onDrop(e, 'pause')}
+                  >
+                    {pauseEmployees.map((emp, index) => (
+                      <div key={index} style={{ 
+                        marginBottom: '4px',
+                        padding: '4px',
+                        backgroundColor: '#6c757d',
+                        color: 'white',
+                        borderRadius: '3px',
+                        fontSize: '0.9em',
+                        position: 'relative'
+                      }}>
+                        {emp}
+                        <button 
+                          onClick={() => handleRemoveItem('pause', emp)} 
+                          style={removeButtonStyle}
+                        >X</button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1366,9 +1436,8 @@ const getItemColor = (item) => {
   } else if (initialTrucks.includes(item)) {
     return 'orange';
   } else if (initialFrachter.includes(item)) {
-    return Object.keys(airlineLogos).some(code => item.startsWith(code)) 
-      ? '#ffffff' 
-      : 'orange';
+    // Always return white for Frachter items
+    return '#ffffff';
   } else if (initialPax.includes(item)) {
     return 'orange';
   } else if (initial3P.includes(item)) {
