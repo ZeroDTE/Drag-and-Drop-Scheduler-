@@ -129,3 +129,54 @@ const comingLaterTimes = ['09:00', '11:00', '14:00'];
 - React
 - SharePoint service integration
 - Local storage API
+
+## Repository Structure
+
+### Core Application Files
+- `src/App.js` - Main application component containing the drag-and-drop scheduler implementation
+- `src/services/sharePointService.js` - SharePoint integration service
+- `src/index.js` - Application entry point
+- `src/styles/` - CSS and styling files
+
+### Assets
+- `public/` - Static assets including:
+  - Airline logos (*.png)
+  - FCS logo
+  - Favicon and other public assets
+
+### Configuration
+- `package.json` - Project dependencies and scripts
+- `.env` - Environment variables (SharePoint configuration)
+
+### Build and Deployment
+- `build/` - Production build output
+- `deployment/` - Deployment configuration files
+
+### Documentation
+- `README.md` - Project documentation (this file)
+- `docs/` - Additional documentation files
+
+## File Details
+
+### App.js
+The main application component that includes:
+- Drag and drop functionality
+- State management
+- UI components
+- Employee management
+- Schedule management
+- Authentication
+- Data persistence logic
+
+### sharePointService.js
+Handles all SharePoint interactions:
+- Data fetching
+- Schedule saving
+- Schedule deletion
+- Error handling
+
+### index.js
+Application bootstrap and initialization:
+- React rendering
+- Service worker registration
+- Global style imports
