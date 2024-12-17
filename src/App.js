@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import sharePointService from './services/sharePointService';
-
-
+import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
 
 const initialTasks = [
   'Wareneingang', 'Kommissionierung', 'Verpackung', 'Qualitätskontrolle',
@@ -33,24 +32,22 @@ const initial3P = ['ACM 06:00', 'ACM 14:00', 'ACM 22:00', 'IGS 06:00', 'IGS 14:0
 // const comingLaterTimes = ['09:00', '11:00', '14:00'];
 
 const airlineLogos = {
-  'CA': '/air-china-logo-.png',
-  'SV': '/Saudi-Arabian-Airlines-Logo.png',
-  'EY': '/Etihad-airways-logo.png',
-  'AA': '/logo-american-airlines.png',
-  'BA': '/British_Airways-Logo.png',
-  'OZ': '/Asiana-Airlines-Logo.png',
-  'IB766': '/Logo_iberia.png',
-  'IB9400': '/Logo_iberia.png',
-  'OS188': '/Austrian-Airlines-Logo.png',
-  'OZ542': '/Asiana-Airlines-Logo.png',
-  'OZ776': '/Asiana-Airlines-Logo.png',
-  'OZ794': '/Asiana-Airlines-Logo.png',
-  'OZ796': '/Asiana-Airlines-Logo.png',
-  'CZ': '/ChinaSouthernAirlines.png',
-  'CI': '/China-Airlines-Logo.png',
-  // Add more airlines as you get their logos
-  // 'AA': '/american-airlines-logo.png',
-  // etc.
+  'CA': process.env.PUBLIC_URL + '/air-china-logo-.png',
+  'SV': process.env.PUBLIC_URL + '/Saudi-Arabian-Airlines-Logo.png',
+  'EY': process.env.PUBLIC_URL + '/Etihad-airways-logo.png',
+  'AA': process.env.PUBLIC_URL + '/logo-american-airlines.png',
+  'BA': process.env.PUBLIC_URL + '/British_Airways-Logo.png',
+  'OZ': process.env.PUBLIC_URL + '/Asiana-Airlines-Logo.png',
+  'IB766': process.env.PUBLIC_URL + '/Logo_iberia.png',
+  'IB9400': process.env.PUBLIC_URL + '/Logo_iberia.png',
+  'OS188': process.env.PUBLIC_URL + '/Austrian-Airlines-Logo.png',
+  'OZ542': process.env.PUBLIC_URL + '/Asiana-Airlines-Logo.png',
+  'OZ776': process.env.PUBLIC_URL + '/Asiana-Airlines-Logo.png',
+  'OZ794': process.env.PUBLIC_URL + '/Asiana-Airlines-Logo.png',
+  'OZ796': process.env.PUBLIC_URL + '/Asiana-Airlines-Logo.png',
+  'CZ': process.env.PUBLIC_URL + '/ChinaSouthernAirlines.png',
+  'CI': process.env.PUBLIC_URL + '/China-Airlines-Logo.png',
+  // ... rest of the logos
 };
 
 const frachterDeadlines = {
