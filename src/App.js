@@ -17,20 +17,20 @@ const allEmployees = [
 ];
 
 const initialTrucks = ['MS-LKW', 'CS-LKW', 'IB-LKW', 'SV-LKW','BA-LKW','IB-LKW','CI-LKW','4W-LKW'];
-const initialFrachter = ['SV', 'EY', 'CA', 'AA', 'BA', 'CI', 'CZ', 'OZ', 'IB766', 'IB9400', 'OS188', 'OZ542', 'OZ776', 'OZ794', 'OZ796'];
+const initialFrachter = ['SV', 'EY', 'CA', 'AA', 'BA', 'CI', 'CZ', 'OZ', 'IB', 'OS', "O3", "DE"];
 const initialPax = [
   'EY122', 'EY124', 'EY916', 'SV914', 'SV926', 'SV930', 'RJ126',
   'AI120', 'AI2026', 'AI2028', 'BA901', 'BA903', 'BA907', 'BA909',
   'BA911', 'BA913', 'BA915', 'BA3319', 'BA3385', 'BA3387', 'CA432',
-  'CA772', 'CA932', 'CA936', 'CA958', 'CA966', 'CA1014', 'CA1022',
-  'CA1036', 'CA1042', 'CA1048', 'CI62', 'CI5522', 'CK216', 'EI651',
-  'EI657', 'EY122', 'EY124', 'EY916', 'SQ25', 'SQ26', 'SQ325',
-  'SV914', 'SV926', 'SV930'
+  'CA772', 'CA932', 'CA936', 'CA958', 'CA966', 'CI62', 'CI5522', 
+  'CK216', 'EI651', 'EI657', 'EY122', 'EY124', 'EY916', 'SQ25', 
+  'SQ26', 'SQ325', 'SV914', 'SV926', 'SV930'
 ];
 
 const initial3P = ['ACM 06:00', 'ACM 14:00', 'ACM 22:00', 'IGS 06:00', 'IGS 14:00', 'IGS 22:00', 'KAT 06:00', 'KAT 14:00', 'KAT 22:00', 'MY Cargo 06:00', 'MY Cargo 14:00', 'MY Cargo 22:00'];
 
-const comingLaterTimes = ['09:00', '11:00', '14:00'];
+// Remove or comment out the fixed comingLaterTimes array
+// const comingLaterTimes = ['09:00', '11:00', '14:00'];
 
 const airlineLogos = {
   'CA': '/air-china-logo-.png',
@@ -86,7 +86,7 @@ const calculateBlinkSpeed = (deadline) => {
   const timeDiff = deadlineTime - now;
   const minutesUntilDeadline = timeDiff / (1000 * 60);
 
-  if (minutesUntilDeadline <= 0 || minutesUntilDeadline > 60) return null;
+  if (minutesUntilDeadline <= 0 || minutesUntilDeadline > 90) return null;
   
   // Return faster animation for closer deadlines
   if (minutesUntilDeadline <= 15) return '0.5s';
@@ -125,6 +125,8 @@ const DragDropScheduler = () => {
   const [selectedEmployees, setSelectedEmployees] = useState([]);
   const [isDropdownVisible, setIsDropdownVisible] = useState(false);
   const [pauseEmployees, setPauseEmployees] = useState([]);
+  const [comingLaterTimes, setComingLaterTimes] = useState(['09:00', '11:00', '14:00']);
+  const [newLaterTime, setNewLaterTime] = useState('');
 
   useEffect(() => {
     const loadSavedData = async () => {
@@ -138,7 +140,9 @@ const DragDropScheduler = () => {
           setSchedule(mostRecent.schedule);
           setSickEmployees(mostRecent.sickEmployees || []);
           setVacationEmployees(mostRecent.vacationEmployees || []);
+          setPauseEmployees(mostRecent.pauseEmployees || []);
           setComingLaterEmployees(mostRecent.comingLaterEmployees || {});
+          setComingLaterTimes(mostRecent.comingLaterTimes || ['09:00', '11:00', '14:00']);
         }
       } catch (error) {
         console.error('Error loading schedules:', error);
@@ -579,6 +583,102 @@ const DragDropScheduler = () => {
     }
   };
 
+  const handleAddLaterTime = (e) => {
+    e.preventDefault();
+    if (newLaterTime && !comingLaterTimes.includes(newLaterTime)) {
+      setComingLaterTimes(prev => [...prev, newLaterTime].sort());
+      setNewLaterTime('');
+    }
+  };
+
+  const handleRemoveLaterTime = (timeToRemove) => {
+    setComingLaterTimes(prev => prev.filter(time => time !== timeToRemove));
+    // Also clean up any employees assigned to this time
+    if (comingLaterEmployees[timeToRemove]) {
+      const employeesToReturn = comingLaterEmployees[timeToRemove];
+      setEmployees(prev => [...prev, ...employeesToReturn]);
+      setComingLaterEmployees(prev => {
+        const newState = { ...prev };
+        delete newState[timeToRemove];
+        return newState;
+      });
+    }
+  };
+
+  // Add new function to handle right-click on employee
+  const handleContextMenu = (e, area, item) => {
+    e.preventDefault(); // Prevent default context menu
+    
+    // Only handle employees
+    if (!allEmployees.includes(item)) return;
+    
+    // Move employee to pause
+    setPauseEmployees(prev => [...prev, item]);
+    
+    // Remove from current area
+    setSchedule(prev => ({
+      ...prev,
+      [area]: prev[area].filter(i => i !== item)
+    }));
+  };
+
+  // Modify the item rendering in Brandabschnitte to include context menu
+  const renderScheduleItem = (item, area) => (
+    <div 
+      key={item} 
+      style={getItemStyle(item, area)}
+      onContextMenu={(e) => handleContextMenu(e, area, item)}
+      onClick={(e) => {
+        // Add double-click handler
+        if (e.detail === 2 && allEmployees.includes(item)) {
+          handleContextMenu(e, area, item);
+        }
+      }}
+    >
+      {initialFrachter.includes(item) && Object.keys(airlineLogos).some(code => item.startsWith(code)) && (
+        <img 
+          src={airlineLogos[item.split(' ')[0]]} 
+          alt={`${item} logo`}
+          style={{
+            position: 'absolute',
+            maxWidth: '80%',
+            maxHeight: '80%',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            objectFit: 'contain',
+            opacity: 0.4,
+            zIndex: 1
+          }}
+        />
+      )}
+      <span style={{ 
+        position: 'relative', 
+        zIndex: 2,
+        fontWeight: initialFrachter.includes(item) && Object.keys(airlineLogos).some(code => item.startsWith(code)) 
+          ? 'bold'
+          : 'normal'
+      }}>{item}</span>
+      {allEmployees.includes(item) && (
+        <button 
+          onClick={(e) => {
+            e.stopPropagation();
+            handleContextMenu(e, area, item);
+          }}
+          style={{
+            ...removeButtonStyle,
+            backgroundColor: '#6c757d', // Different color for pause button
+            right: '30px', // Position it next to the remove button
+          }}
+          title="Pause"
+        >
+          P
+        </button>
+      )}
+      <button onClick={() => handleRemoveItem(area, item)} style={removeButtonStyle}>X</button>
+    </div>
+  );
+
   if (!isAuthenticated) {
     return (
       <div style={{ 
@@ -755,7 +855,7 @@ const DragDropScheduler = () => {
                 <ul style={{
                   ...listStyle,
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
                   gap: '5px'
                 }}>
                   {tasks.map((task, index) => (
@@ -770,10 +870,26 @@ const DragDropScheduler = () => {
                         ...listItemStyle,
                         backgroundColor: 'blue',
                         color: 'white',
-                        padding: '4px 8px',
-                        fontSize: '1em',
+                        padding: '8px 4px',
+                        fontSize: '0.9em',
                         textAlign: 'center',
-                        margin: 0
+                        margin: 0,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        minHeight: '32px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'grab',
+                        userSelect: 'none',
+                      }}
+                      onDragStart={(e) => {
+                        e.target.style.cursor = 'grabbing';
+                        onDragStart(e, task);
+                      }}
+                      onDragEnd={(e) => {
+                        e.target.style.cursor = 'grab';
                       }}
                     >
                       {task}
@@ -1062,9 +1178,12 @@ const DragDropScheduler = () => {
                         <h3 style={{ 
                           margin: 0,
                           color: '#2c3e50', 
-                          fontSize: '1.4em',
+                          fontSize: '1.6em',
                           textTransform: 'uppercase',
-                        }}>{area.replace(/(\d)/, ' $1')}</h3>
+                          textAlign: 'center',
+                          fontWeight: 'bold',
+                          width: '100%'
+                        }}>{`BAS ${area.slice(-1)}`}</h3>
                         <div style={{ display: 'flex', gap: '5px' }}>
                           <button
                             onClick={() => handleRemoveSection(area)}
@@ -1114,35 +1233,7 @@ const DragDropScheduler = () => {
                             onDrop={(e) => onDrop(e, `${area}_${section}`)}
                             onTouchEnd={(e) => onTouchEnd(e, `${area}_${section}`)}
                           >
-                            {schedule[`${area}_${section}`]?.map((item, index) => (
-                              <div key={index} style={getItemStyle(item, `${area}_${section}`)}>
-                                {initialFrachter.includes(item) && Object.keys(airlineLogos).some(code => item.startsWith(code)) && (
-                                  <img 
-                                    src={airlineLogos[item.split(' ')[0]]} 
-                                    alt={`${item} logo`}
-                                    style={{
-                                      position: 'absolute',
-                                      maxWidth: '80%',
-                                      maxHeight: '80%',
-                                      top: '50%',
-                                      left: '50%',
-                                      transform: 'translate(-50%, -50%)',
-                                      objectFit: 'contain',
-                                      opacity: 0.4,
-                                      zIndex: 1
-                                    }}
-                                  />
-                                )}
-                                <span style={{ 
-                                  position: 'relative', 
-                                  zIndex: 2,
-                                  fontWeight: initialFrachter.includes(item) && Object.keys(airlineLogos).some(code => item.startsWith(code)) 
-                                    ? 'bold'  // Make text bold for better readability with logos
-                                    : 'normal'
-                                }}>{item}</span>
-                                <button onClick={() => handleRemoveItem(`${area}_${section}`, item)} style={{...removeButtonStyle, zIndex: 3}}>X</button>
-                              </div>
-                            ))}
+                            {schedule[`${area}_${section}`]?.map(item => renderScheduleItem(item, `${area}_${section}`))}
                           </div>
                         ))}
                       </div>
@@ -1153,120 +1244,7 @@ const DragDropScheduler = () => {
 
               {/* Sidebar - Status sections */}
               <div style={{ flex: '0 0 20%', maxWidth: '250px' }}>
-                <div style={{ 
-                  backgroundColor: '#f8f9fa',
-                  border: '1px solid #dee2e6',
-                  borderRadius: '8px',
-                  padding: '10px',
-                  marginBottom: '10px'
-                }}>
-                  <h4 style={{ margin: '0 0 10px 0', fontSize: '0.9em', color: '#dc3545' }}>Krank</h4>
-                  <div
-                    style={{ 
-                      minHeight: '60px',
-                      backgroundColor: '#fff',
-                      padding: '8px',
-                      borderRadius: '4px',
-                      border: '1px dashed #dc3545'
-                    }}
-                    onDragOver={onDragOver}
-                    onDrop={(e) => onDrop(e, 'sick')}
-                  >
-                    {sickEmployees.map((emp, index) => (
-                      <div key={index} style={{ 
-                        marginBottom: '4px',
-                        padding: '4px',
-                        backgroundColor: '#dc3545',
-                        color: 'white',
-                        borderRadius: '3px',
-                        fontSize: '0.9em',
-                        position: 'relative'
-                      }}>
-                        {emp}
-                        <button onClick={() => {
-                          handleRemoveItem('sick', emp);
-                          setEmployees(prev => [...prev, emp]); // Add back to employees
-                        }} style={removeButtonStyle}>X</button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div style={{ 
-                  backgroundColor: '#f8f9fa',
-                  border: '1px solid #dee2e6',
-                  borderRadius: '8px',
-                  padding: '10px',
-                  marginBottom: '10px'
-                }}>
-                  <h4 style={{ margin: '0 0 10px 0', fontSize: '0.9em', color: '#ffc107' }}>Urlaub</h4>
-                  <div
-                    style={{ 
-                      minHeight: '60px',
-                      backgroundColor: '#fff',
-                      padding: '8px',
-                      borderRadius: '4px',
-                      border: '1px dashed #ffc107'
-                    }}
-                    onDragOver={onDragOver}
-                    onDrop={(e) => onDrop(e, 'vacation')}
-                  >
-                    {vacationEmployees.map((emp, index) => (
-                      <div key={index} style={{ 
-                        marginBottom: '4px',
-                        padding: '4px',
-                        backgroundColor: '#ffc107',
-                        color: 'black',
-                        borderRadius: '3px',
-                        fontSize: '0.9em',
-                        position: 'relative'
-                      }}>
-                        {emp}
-                        <button onClick={() => handleRemoveItem('vacation', emp)} style={removeButtonStyle}>X</button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div style={{ 
-                  backgroundColor: '#f8f9fa',
-                  border: '1px solid #dee2e6',
-                  borderRadius: '8px',
-                  padding: '10px'
-                }}>
-                  <h4 style={{ margin: '0 0 10px 0', fontSize: '0.9em', color: '#17a2b8' }}>Kommen noch</h4>
-                  {comingLaterTimes.map(time => (
-                    <div key={time} style={{ marginBottom: '10px' }}>
-                      <div style={{ fontSize: '0.8em', color: '#666', marginBottom: '4px' }}>{time}</div>
-                      <div
-                        style={{ 
-                          minHeight: '40px',
-                          backgroundColor: '#fff',
-                          padding: '8px',
-                          borderRadius: '4px',
-                          border: '1px dashed #17a2b8'
-                        }}
-                        onDragOver={onDragOver}
-                        onDrop={(e) => onDrop(e, time)}
-                      >
-                        {comingLaterEmployees[time]?.map((emp, index) => (
-                          <div key={index} style={{ 
-                            marginBottom: '4px',
-                            padding: '4px',
-                            backgroundColor: '#17a2b8',
-                            color: 'white',
-                            borderRadius: '3px',
-                            fontSize: '0.9em'
-                          }}>
-                            {emp}
-                            <button onClick={() => handleRemoveItem(time, emp)} style={removeButtonStyle}>X</button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
+                {/* Pause Section */}
                 <div style={{ 
                   backgroundColor: '#f8f9fa',
                   border: '1px solid #dee2e6',
@@ -1301,6 +1279,169 @@ const DragDropScheduler = () => {
                           onClick={() => handleRemoveItem('pause', emp)} 
                           style={removeButtonStyle}
                         >X</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Kommen noch Section */}
+                <div style={{ 
+                  backgroundColor: '#f8f9fa',
+                  border: '1px solid #dee2e6',
+                  borderRadius: '8px',
+                  padding: '10px'
+                }}>
+                  <h4 style={{ margin: '0 0 10px 0', fontSize: '0.9em', color: '#17a2b8' }}>Kommen noch</h4>
+                  
+                  <form onSubmit={handleAddLaterTime} style={{ marginBottom: '10px', display: 'flex', gap: '5px' }}>
+                    <input
+                      type="time"
+                      value={newLaterTime}
+                      onChange={(e) => setNewLaterTime(e.target.value)}
+                      style={{
+                        padding: '4px',
+                        borderRadius: '4px',
+                        border: '1px solid #ced4da',
+                        flex: 1
+                      }}
+                    />
+                    <button 
+                      type="submit"
+                      style={{
+                        ...buttonStyle,
+                        padding: '4px 8px',
+                        margin: 0,
+                        fontSize: '0.9em'
+                      }}
+                    >
+                      +
+                    </button>
+                  </form>
+
+                  {comingLaterTimes.map(time => (
+                    <div key={time} style={{ marginBottom: '10px' }}>
+                      <div style={{ 
+                        fontSize: '0.8em', 
+                        color: '#666', 
+                        marginBottom: '4px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}>
+                        <span>{time}</span>
+                        <button
+                          onClick={() => handleRemoveLaterTime(time)}
+                          style={{
+                            ...removeButtonStyle,
+                            position: 'relative',
+                            top: 0,
+                            right: 0,
+                            width: '16px',
+                            height: '16px',
+                            fontSize: '10px'
+                          }}
+                        >
+                          X
+                        </button>
+                      </div>
+                      <div
+                        style={{ 
+                          minHeight: '40px',
+                          backgroundColor: '#fff',
+                          padding: '8px',
+                          borderRadius: '4px',
+                          border: '1px dashed #17a2b8'
+                        }}
+                        onDragOver={onDragOver}
+                        onDrop={(e) => onDrop(e, time)}
+                      >
+                        {comingLaterEmployees[time]?.map((emp, index) => (
+                          <div key={index} style={{ 
+                            marginBottom: '4px',
+                            padding: '4px',
+                            backgroundColor: '#17a2b8',
+                            color: 'white',
+                            borderRadius: '3px',
+                            fontSize: '0.9em'
+                          }}>
+                            {emp}
+                            <button onClick={() => handleRemoveItem(time, emp)} style={removeButtonStyle}>X</button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Krank Section */}
+                <div style={{ 
+                  backgroundColor: '#f8f9fa',
+                  border: '1px solid #dee2e6',
+                  borderRadius: '8px',
+                  padding: '10px',
+                  marginBottom: '10px'
+                }}>
+                  <h4 style={{ margin: '0 0 10px 0', fontSize: '0.9em', color: '#dc3545' }}>Krank</h4>
+                  <div
+                    style={{ 
+                      minHeight: '60px',
+                      backgroundColor: '#fff',
+                      padding: '8px',
+                      borderRadius: '4px',
+                      border: '1px dashed #dc3545'
+                    }}
+                    onDragOver={onDragOver}
+                    onDrop={(e) => onDrop(e, 'sick')}
+                  >
+                    {sickEmployees.map((emp, index) => (
+                      <div key={index} style={{ 
+                        marginBottom: '4px',
+                        padding: '4px',
+                        backgroundColor: '#dc3545',
+                        color: 'white',
+                        borderRadius: '3px',
+                        fontSize: '0.9em',
+                        position: 'relative'
+                      }}>
+                        {emp}
+                        <button onClick={() => handleRemoveItem('sick', emp)} style={removeButtonStyle}>X</button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Urlaub Section */}
+                <div style={{ 
+                  backgroundColor: '#f8f9fa',
+                  border: '1px solid #dee2e6',
+                  borderRadius: '8px',
+                  padding: '10px',
+                  marginBottom: '10px'
+                }}>
+                  <h4 style={{ margin: '0 0 10px 0', fontSize: '0.9em', color: '#ffc107' }}>Urlaub</h4>
+                  <div
+                    style={{ 
+                      minHeight: '60px',
+                      backgroundColor: '#fff',
+                      padding: '8px',
+                      borderRadius: '4px',
+                      border: '1px dashed #ffc107'
+                    }}
+                    onDragOver={onDragOver}
+                    onDrop={(e) => onDrop(e, 'vacation')}
+                  >
+                    {vacationEmployees.map((emp, index) => (
+                      <div key={index} style={{ 
+                        marginBottom: '4px',
+                        padding: '4px',
+                        backgroundColor: '#ffc107',
+                        color: 'black',
+                        borderRadius: '3px',
+                        fontSize: '0.9em',
+                        position: 'relative'
+                      }}>
+                        {emp}
+                        <button onClick={() => handleRemoveItem('vacation', emp)} style={removeButtonStyle}>X</button>
                       </div>
                     ))}
                   </div>
@@ -1358,9 +1499,12 @@ const DragDropScheduler = () => {
                     <h3 style={{ 
                       margin: 0,
                       color: '#2c3e50', 
-                      fontSize: '1.4em',
+                      fontSize: '1.6em',
                       textTransform: 'uppercase',
-                    }}>{area.toUpperCase()}</h3>
+                      textAlign: 'center',
+                      fontWeight: 'bold',
+                      width: '100%'
+                    }}>{`BAS ${area.slice(-1)}`}</h3>
                   </div>
 
                   <div style={{ 
@@ -1383,37 +1527,7 @@ const DragDropScheduler = () => {
                           height: '100%'  // Use full height of grid cell
                         }}
                       >
-                        {schedule[`${area}_${section}`]?.map((item, index) => (
-                          <div 
-                            key={index} 
-                            style={getItemStyle(item, `${area}_${section}`)}
-                          >
-                            {initialFrachter.includes(item) && Object.keys(airlineLogos).some(code => item.startsWith(code)) && (
-                              <img 
-                                src={airlineLogos[item.split(' ')[0]]} 
-                                alt={`${item} logo`}
-                                style={{
-                                  position: 'absolute',
-                                  maxWidth: '80%',
-                                  maxHeight: '80%',
-                                  top: '50%',
-                                  left: '50%',
-                                  transform: 'translate(-50%, -50%)',
-                                  objectFit: 'contain',
-                                  opacity: 0.4,
-                                  zIndex: 1
-                                }}
-                              />
-                            )}
-                            <span style={{ 
-                              position: 'relative', 
-                              zIndex: 2,
-                              fontWeight: initialFrachter.includes(item) && Object.keys(airlineLogos).some(code => item.startsWith(code)) 
-                                ? 'bold'
-                                : 'normal'
-                            }}>{item}</span>
-                          </div>
-                        ))}
+                        {schedule[`${area}_${section}`]?.map(item => renderScheduleItem(item, `${area}_${section}`))}
                       </div>
                     ))}
                   </div>
@@ -1487,7 +1601,11 @@ const listItemStyle = {
   marginBottom: '5px',
   backgroundColor: '#f0f0f0',
   borderRadius: '4px',
-  cursor: 'move',
+  cursor: 'grab',
+  userSelect: 'none',
+  '&:active': {
+    cursor: 'grabbing',
+  },
 };
 
 const removeButtonStyle = {
