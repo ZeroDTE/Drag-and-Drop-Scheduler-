@@ -1064,7 +1064,7 @@ const DragDropScheduler = () => {
                           color: '#2c3e50', 
                           fontSize: '1.4em',
                           textTransform: 'uppercase',
-                        }}>{area}</h3>
+                        }}>{area.replace(/(\d)/, ' $1')}</h3>
                         <div style={{ display: 'flex', gap: '5px' }}>
                           <button
                             onClick={() => handleRemoveSection(area)}
