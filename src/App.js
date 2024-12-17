@@ -637,7 +637,7 @@ const DragDropScheduler = () => {
     >
       {initialFrachter.includes(item) && Object.keys(airlineLogos).some(code => item.startsWith(code)) && (
         <img 
-          src={airlineLogos[item.split(' ')[0]]} 
+          src={process.env.PUBLIC_URL + "/fcs-logo.png"} 
           alt={`${item} logo`}
           style={{
             position: 'absolute',
@@ -698,7 +698,7 @@ const DragDropScheduler = () => {
           transform: 'translateY(-20px)'
         }}>
           <img 
-            src="/fcs-logo.png" 
+            src={process.env.PUBLIC_URL + "/fcs-logo.png"} 
             alt="FCS Logo" 
             style={{
               width: '300px',
@@ -790,7 +790,7 @@ const DragDropScheduler = () => {
           padding: viewMode === 'fo' ? '0' : '0 20px'  // Add padding only to header in employee view
         }}>
           <img 
-            src="/fcs-logo.png" 
+            src={process.env.PUBLIC_URL + "/fcs-logo.png"} 
             alt="FCS Logo" 
             style={{
               width: '150px',
@@ -1068,7 +1068,7 @@ const DragDropScheduler = () => {
                     >
                       {Object.keys(airlineLogos).some(code => ship.startsWith(code)) && (
                         <img 
-                          src={airlineLogos[ship.split(' ')[0]]} 
+                          src={process.env.PUBLIC_URL + "/fcs-logo.png"} 
                           alt={`${ship} logo`}
                           style={{
                             position: 'absolute',
