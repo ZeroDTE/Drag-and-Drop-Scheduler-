@@ -1460,16 +1460,56 @@ const DragDropScheduler = () => {
             </div>
           </>
         ) : (
-          // Simplified Employee view
-          <div style={{ padding: '0 20px' }}>  {/* Add consistent padding for content */}
-            <h2 style={subheaderStyle}>
-              Aktueller Zeitplan {selectedSchedule && `(Geladen: ${selectedSchedule.date})`}
-            </h2>
+          // Employee view
+          <div style={{ padding: '0 20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '20px', gap: '15px' }}>
+              <h2 style={{ ...subheaderStyle, margin: 0, minWidth: 'fit-content' }}>
+                Aktueller Zeitplan {selectedSchedule && `(Geladen: ${selectedSchedule.date})`}
+              </h2>
+              
+              {/* Compact Pause section */}
+              {pauseEmployees.length > 0 && (
+                <div style={{ 
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '8px 15px',
+                  backgroundColor: '#f8f9fa',
+                  border: '1px solid #dee2e6',
+                  borderRadius: '8px',
+                }}>
+                  <span style={{ 
+                    color: '#6c757d',
+                    fontWeight: 'bold',
+                    fontSize: '0.9em'
+                  }}>PAUSE:</span>
+                  <div style={{ 
+                    display: 'flex',
+                    gap: '8px',
+                    flexWrap: 'wrap'
+                  }}>
+                    {pauseEmployees.map((emp, index) => (
+                      <span key={index} style={{ 
+                        padding: '4px 8px',
+                        backgroundColor: '#6c757d',
+                        color: 'white',
+                        borderRadius: '3px',
+                        fontSize: '0.9em'
+                      }}>
+                        {emp}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* BAS Grid */}
             <div style={{ 
               display: 'grid', 
               gridTemplateColumns: 'repeat(2, 1fr)', 
               gap: '20px',
-              height: 'calc(100vh - 150px)'  // Use full viewport height minus header
+              height: 'calc(100vh - 150px)' // Adjusted height since pause section is more compact
             }}>
               {['brandabschnitt3', 'brandabschnitt4', 'brandabschnitt5', 'brandabschnitt6'].map(area => (
                 <div 
