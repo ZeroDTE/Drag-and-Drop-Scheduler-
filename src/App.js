@@ -90,6 +90,23 @@ const calculateBlinkSpeed = (deadline) => {
   return '1.5s';
 };
 
+const breakAnimation = `
+  @keyframes needsBreak {
+    0% { 
+      opacity: 1;
+      background-color: #ff4444;
+    }
+    50% { 
+      opacity: 0.3;
+      background-color: #4CAF50;
+    }
+    100% { 
+      opacity: 1;
+      background-color: #ff4444;
+    }
+  }
+`;
+
 const DragDropScheduler = () => {
   const [viewMode, setViewMode] = useState('fo');
   const [tasks, setTasks] = useState(initialTasks);
@@ -123,6 +140,176 @@ const DragDropScheduler = () => {
   const [pauseEmployees, setPauseEmployees] = useState([]);
   const [comingLaterTimes, setComingLaterTimes] = useState(['09:00', '11:00', '14:00']);
   const [newLaterTime, setNewLaterTime] = useState('');
+
+  // Add new state for tracking employee assignments and breaks
+  const [employeeAssignments, setEmployeeAssignments] = useState({});
+  const [completedBreaks, setCompletedBreaks] = useState([]);
+
+  // Modify the useEffect that checks for employee assignments
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = new Date();
+      Object.entries(employeeAssignments).forEach(([employee, assignmentTime]) => {
+        const secondsWorked = (now - new Date(assignmentTime)) / 1000;
+        
+        // If employee has worked for 30 seconds and hasn't taken a break
+        if (secondsWorked >= 30 && !pauseEmployees.includes(employee) && !completedBreaks.includes(employee)) {
+          // Force re-render to show blinking
+          setEmployeeAssignments(prev => ({ ...prev }));
+        }
+      });
+    }, 1000); // Check every second
+
+    return () => clearInterval(interval);
+  }, [employeeAssignments, pauseEmployees, completedBreaks]);
+
+  // Modify onDrop to track assignment time
+  const onDrop = (e, area) => {
+    e.preventDefault();
+    const item = draggedItem;
+
+    if (!item) return;
+
+    // If dropping an employee into a BAS area
+    if (area.startsWith('brandabschnitt') && allEmployees.includes(item)) {
+      setEmployeeAssignments(prev => ({
+        ...prev,
+        [item]: new Date().toISOString()
+      }));
+    }
+
+    // Only allow employees in special areas
+    if ((area === 'sick' || area === 'vacation' || area === 'pause' || comingLaterTimes.includes(area)) 
+        && !allEmployees.includes(item)) {
+      return;
+    }
+
+    // Handle special areas
+    if (area === 'sick') {
+      setSickEmployees(prev => [...prev, item]);
+      setEmployees(prev => prev.filter(emp => emp !== item));
+    } else if (area === 'vacation') {
+      setVacationEmployees(prev => [...prev, item]);
+      setEmployees(prev => prev.filter(emp => emp !== item));
+    } else if (area === 'pause') {
+      setPauseEmployees(prev => [...prev, item]);
+      setEmployees(prev => prev.filter(emp => emp !== item));
+    } else if (comingLaterTimes.includes(area)) {
+      setComingLaterEmployees(prev => ({
+        ...prev,
+        [area]: [...(prev[area] || []), item]
+      }));
+      setEmployees(prev => prev.filter(emp => emp !== item));
+    } else {
+      // Handle normal areas (brandabschnitte)
+      setSchedule(prev => ({
+        ...prev,
+        [area]: [...(prev[area] || []), item]
+      }));
+
+      // Remove from original list
+      if (allEmployees.includes(item)) {
+        setEmployees(prev => prev.filter(emp => emp !== item));
+      } else if (initialTasks.includes(item)) {
+        setTasks(prev => prev.filter(task => task !== item));
+      } else if (initialTrucks.includes(item)) {
+        setTrucks(prev => prev.filter(truck => truck !== item));
+      } else if (initialFrachter.includes(item)) {
+        setFrachter(prev => prev.filter(f => f !== item));
+      } else if (initialPax.includes(item)) {
+        setPax(prev => prev.filter(p => p !== item));
+      } else if (initial3P.includes(item)) {
+        setThreeP(prev => prev.filter(tp => tp !== item));
+      }
+    }
+
+    // Clear draggedItem after drop
+    setDraggedItem(null);
+  };
+
+  // Modify pause handling useEffect
+  useEffect(() => {
+    const pauseTimers = {};
+
+    pauseEmployees.forEach(emp => {
+      if (!pauseTimers[emp]) {
+        pauseTimers[emp] = setTimeout(() => {
+          // After 30 seconds (for testing), add to completedBreaks
+          setCompletedBreaks(prev => [...prev, emp]);
+          // Remove from pause and add back to employees list
+          setPauseEmployees(prev => prev.filter(e => e !== emp));
+          setEmployees(prev => [...prev, emp]); // Add back to employees list
+        }, 30 * 1000); // 30 seconds
+      }
+    });
+
+    return () => {
+      // Cleanup timers
+      Object.values(pauseTimers).forEach(timer => clearTimeout(timer));
+    };
+  }, [pauseEmployees]);
+
+  // Modify getItemStyle to ensure checkmark is visible
+  const getItemStyle = (item, area) => {
+    const baseStyle = {
+      marginBottom: '5px',
+      padding: '4px 8px',
+      backgroundColor: getItemColor(item),
+      borderRadius: '4px',
+      position: 'relative',
+      color: initial3P.includes(item) ? 'white' :
+            (initialFrachter.includes(item) && Object.keys(airlineLogos).some(code => item.startsWith(code)))
+              ? 'black'
+              : 'white',
+      fontSize: '1em',
+      textAlign: 'center',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+      minHeight: '40px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      overflow: 'hidden'
+    };
+
+    if (allEmployees.includes(item)) {
+      // Check if employee has completed break
+      if (completedBreaks.includes(item)) {
+        return {
+          ...baseStyle,
+          backgroundColor: '#ff4444',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingRight: '30px',  // Make space for the checkmark
+          position: 'relative',  // Ensure relative positioning
+          '&::after': {
+            content: '"✓"',
+            position: 'absolute',
+            right: '8px',
+            color: '#4CAF50',
+            fontWeight: 'bold',
+            fontSize: '1.2em'
+          }
+        };
+      }
+
+      const assignmentTime = employeeAssignments[item];
+      if (assignmentTime) {
+        const secondsWorked = (new Date() - new Date(assignmentTime)) / 1000;
+        
+        if (secondsWorked >= 30 && !pauseEmployees.includes(item) && !completedBreaks.includes(item)) {
+          return {
+            ...baseStyle,
+            animation: 'needsBreak 1s infinite',
+            animationTimingFunction: 'ease-in-out',
+            backgroundColor: '#ff4444'
+          };
+        }
+      }
+    }
+
+    return baseStyle;
+  };
 
   useEffect(() => {
     const loadSavedData = async () => {
@@ -257,62 +444,6 @@ const DragDropScheduler = () => {
   const onDragOver = (e) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-  };
-
-  const onDrop = (e, area) => {
-    e.preventDefault();
-    const item = draggedItem; // Use draggedItem instead of getData
-
-    // Guard clause - if no item is being dragged, return early
-    if (!item) return;
-
-    // Only allow employees in special areas
-    if ((area === 'sick' || area === 'vacation' || area === 'pause' || comingLaterTimes.includes(area)) 
-        && !allEmployees.includes(item)) {
-      return;
-    }
-
-    // Handle special areas
-    if (area === 'sick') {
-      setSickEmployees(prev => [...prev, item]);
-      setEmployees(prev => prev.filter(emp => emp !== item));
-    } else if (area === 'vacation') {
-      setVacationEmployees(prev => [...prev, item]);
-      setEmployees(prev => prev.filter(emp => emp !== item));
-    } else if (area === 'pause') {
-      setPauseEmployees(prev => [...prev, item]);
-      setEmployees(prev => prev.filter(emp => emp !== item));
-    } else if (comingLaterTimes.includes(area)) {
-      setComingLaterEmployees(prev => ({
-        ...prev,
-        [area]: [...(prev[area] || []), item]
-      }));
-      setEmployees(prev => prev.filter(emp => emp !== item));
-    } else {
-      // Handle normal areas (brandabschnitte)
-      setSchedule(prev => ({
-        ...prev,
-        [area]: [...(prev[area] || []), item]
-      }));
-
-      // Remove from original list
-      if (allEmployees.includes(item)) {
-        setEmployees(prev => prev.filter(emp => emp !== item));
-      } else if (initialTasks.includes(item)) {
-        setTasks(prev => prev.filter(task => task !== item));
-      } else if (initialTrucks.includes(item)) {
-        setTrucks(prev => prev.filter(truck => truck !== item));
-      } else if (initialFrachter.includes(item)) {
-        setFrachter(prev => prev.filter(f => f !== item));
-      } else if (initialPax.includes(item)) {
-        setPax(prev => prev.filter(p => p !== item));
-      } else if (initial3P.includes(item)) {
-        setThreeP(prev => prev.filter(tp => tp !== item));
-      }
-    }
-
-    // Clear draggedItem after drop
-    setDraggedItem(null);
   };
 
   const handleRemoveItem = (area, item) => {
@@ -526,53 +657,6 @@ const DragDropScheduler = () => {
     });
   };
 
-  const getItemStyle = (item, area) => {
-    const baseStyle = {
-      marginBottom: '5px',
-      padding: '4px 8px',
-      backgroundColor: getItemColor(item),
-      borderRadius: '4px',
-      position: 'relative',
-      color: initial3P.includes(item) ? 'white' :
-            (initialFrachter.includes(item) && Object.keys(airlineLogos).some(code => item.startsWith(code)))
-              ? 'black'
-              : 'white',
-      fontSize: '1em',
-      textAlign: 'center',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-      minHeight: '40px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      overflow: 'hidden'
-    };
-
-    // Check if item is a Frachter and has a deadline
-    if (initialFrachter.includes(item)) {
-      const frachterCode = Object.keys(frachterDeadlines).find(code => item.startsWith(code));
-      if (frachterCode && area?.startsWith('brandabschnitt')) {
-        const blinkSpeed = calculateBlinkSpeed(frachterDeadlines[frachterCode]);
-        if (blinkSpeed) {
-          return {
-            ...baseStyle,
-            animation: `blink ${blinkSpeed} infinite`,
-            backgroundColor: '#ff4444',
-            color: 'white',
-          };
-        }
-      }
-      // If it's a Frachter but not blinking, keep the original Frachter styling
-      return {
-        ...baseStyle,
-        backgroundColor: '#ffffff',  // or whatever color you want for Frachter
-        color: 'black',
-        border: '1px solid #ddd'
-      };
-    }
-
-    return baseStyle;
-  };
-
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') {
       handleLogin();
@@ -625,51 +709,18 @@ const DragDropScheduler = () => {
       style={getItemStyle(item, area)}
       onContextMenu={(e) => handleContextMenu(e, area, item)}
       onClick={(e) => {
-        // Add double-click handler
         if (e.detail === 2 && allEmployees.includes(item)) {
           handleContextMenu(e, area, item);
         }
       }}
     >
-      {initialFrachter.includes(item) && Object.keys(airlineLogos).some(code => item.startsWith(code)) && (
-        <img 
-          src={process.env.PUBLIC_URL + "/fcs-logo.png"} 
-          alt={`${item} logo`}
-          style={{
-            position: 'absolute',
-            maxWidth: '80%',
-            maxHeight: '80%',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            objectFit: 'contain',
-            opacity: 0.4,
-            zIndex: 1
-          }}
-        />
-      )}
-      <span style={{ 
-        position: 'relative', 
-        zIndex: 2,
-        fontWeight: initialFrachter.includes(item) && Object.keys(airlineLogos).some(code => item.startsWith(code)) 
-          ? 'bold'
-          : 'normal'
-      }}>{item}</span>
-      {allEmployees.includes(item) && (
-        <button 
-          onClick={(e) => {
-            e.stopPropagation();
-            handleContextMenu(e, area, item);
-          }}
-          style={{
-            ...removeButtonStyle,
-            backgroundColor: '#6c757d', // Different color for pause button
-            right: '30px', // Position it next to the remove button
-          }}
-          title="Pause"
-        >
-          P
-        </button>
+      <span>{item}</span>
+      {completedBreaks.includes(item) && (
+        <span style={{ 
+          color: '#4CAF50',
+          fontWeight: 'bold',
+          marginLeft: '8px'
+        }}>✓</span>
       )}
       <button onClick={() => handleRemoveItem(area, item)} style={removeButtonStyle}>X</button>
     </div>
@@ -769,7 +820,10 @@ const DragDropScheduler = () => {
 
   return (
     <>
-      <style>{blinkingAnimation}</style>
+      <style>
+        {blinkingAnimation}
+        {breakAnimation}
+      </style>
       <div style={{ 
         fontFamily: 'Arial, sans-serif', 
         padding: viewMode === 'fo' ? '20px' : '0',  // Remove padding in employee view
