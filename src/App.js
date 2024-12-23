@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import sharePointService from './services/sharePointService';
-import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
 
 const initialTasks = [
   'Wareneingang', 'Kommissionierung', 'Verpackung', 'Qualitätskontrolle',
