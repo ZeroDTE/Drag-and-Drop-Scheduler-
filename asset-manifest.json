@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "/Drag-and-Drop-Scheduler-/static/css/main.e6c13ad2.css",
-    "main.js": "/Drag-and-Drop-Scheduler-/static/js/main.97a6cb50.js",
+    "main.js": "/Drag-and-Drop-Scheduler-/static/js/main.b55fb11d.js",
     "static/js/453.ed3810f9.chunk.js": "/Drag-and-Drop-Scheduler-/static/js/453.ed3810f9.chunk.js",
     "index.html": "/Drag-and-Drop-Scheduler-/index.html",
     "main.e6c13ad2.css.map": "/Drag-and-Drop-Scheduler-/static/css/main.e6c13ad2.css.map",
-    "main.97a6cb50.js.map": "/Drag-and-Drop-Scheduler-/static/js/main.97a6cb50.js.map",
+    "main.b55fb11d.js.map": "/Drag-and-Drop-Scheduler-/static/js/main.b55fb11d.js.map",
     "453.ed3810f9.chunk.js.map": "/Drag-and-Drop-Scheduler-/static/js/453.ed3810f9.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.e6c13ad2.css",
-    "static/js/main.97a6cb50.js"
+    "static/js/main.b55fb11d.js"
   ]
 }
