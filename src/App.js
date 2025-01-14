@@ -826,25 +826,26 @@ const DragDropScheduler = () => {
       </style>
       <div style={{ 
         fontFamily: 'Arial, sans-serif', 
-        padding: viewMode === 'fo' ? '20px' : '0',  // Remove padding in employee view
-        maxWidth: viewMode === 'fo' ? '100%' : 'none',  // Remove max-width constraint in employee view
+        padding: viewMode === 'fo' ? '10px' : '0',  // Reduced padding
+        maxWidth: '100%',  // Always use full width
         margin: '0 auto',
         minHeight: '100vh', 
-        background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)'
+        background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+        fontSize: 'clamp(12px, 1vw, 16px)'  // Dynamic font sizing
       }}>
         <div style={{ 
           display: 'flex', 
           justifyContent: 'space-between', 
           alignItems: 'center', 
-          marginBottom: '20px',
-          padding: viewMode === 'fo' ? '0' : '0 20px'  // Add padding only to header in employee view
+          marginBottom: '10px',
+          padding: viewMode === 'fo' ? '0' : '0 10px'
         }}>
           <img 
             src={process.env.PUBLIC_URL + "/fcs-logo.png"} 
             alt="FCS Logo" 
             style={{
-              width: '150px',
-              marginBottom: '10px'
+              width: 'clamp(100px, 15vw, 150px)',  // Dynamic logo sizing
+              marginBottom: '5px'
             }}
           />
           <button 
@@ -899,7 +900,7 @@ const DragDropScheduler = () => {
               </form>
             </div>
 
-            <div style={{ display: 'flex', gap: '20px', marginBottom: '20px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '10px', marginBottom: '10px', flexWrap: 'wrap' }}>
               <div style={{ flex: '1 1 150px', minWidth: '150px' }}>
                 <h2 style={subheaderStyle}>Aufgaben</h2>
                 <ul style={{
@@ -993,12 +994,18 @@ const DragDropScheduler = () => {
                           // Check if employee is not in current employees list
                           const notInEmployeesList = !employees.includes(emp);
                           
+                          // Check if employee is not in any special areas
+                          const notInSpecialAreas = !sickEmployees.includes(emp) && 
+                                                   !vacationEmployees.includes(emp) && 
+                                                   !pauseEmployees.includes(emp) &&
+                                                   !Object.values(comingLaterEmployees).flat().includes(emp);
+                          
                           // Check if employee is not assigned to any Brandabschnitt
                           const notInSchedule = !Object.values(schedule).some(
                             areaItems => areaItems?.includes(emp)
                           );
                           
-                          return notInEmployeesList && notInSchedule;
+                          return notInEmployeesList && notInSchedule && notInSpecialAreas;
                         })
                         .map((emp, index) => (
                           <div
@@ -1202,7 +1209,7 @@ const DragDropScheduler = () => {
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '20px' }}>
+            <div style={{ display: 'flex', gap: '10px' }}>
               {/* Main content - Brandabschnitte */}
               <div style={{ flex: '1 1 80%' }}>
                 <h2 style={subheaderStyle}>Aktueller Zeitplan {selectedSchedule && `(Geladen: ${selectedSchedule.date})`}</h2>
@@ -1515,7 +1522,11 @@ const DragDropScheduler = () => {
           </>
         ) : (
           // Employee view
-          <div style={{ padding: '0 20px' }}>
+          <div style={{ 
+            padding: '0 10px',
+            height: '100vh',
+            overflow: 'auto'  // Enable scrolling if content overflows
+          }}>
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: '20px', gap: '15px' }}>
               <h2 style={{ ...subheaderStyle, margin: 0, minWidth: 'fit-content' }}>
                 Aktueller Zeitplan {selectedSchedule && `(Geladen: ${selectedSchedule.date})`}
@@ -1561,9 +1572,12 @@ const DragDropScheduler = () => {
             {/* BAS Grid */}
             <div style={{ 
               display: 'grid', 
-              gridTemplateColumns: 'repeat(2, 1fr)', 
-              gap: '20px',
-              height: 'calc(100vh - 150px)' // Adjusted height since pause section is more compact
+              gridTemplateColumns: window.innerWidth < 768 
+                ? '1fr'  // Single column on mobile
+                : 'repeat(2, 1fr)',  // Two columns on larger screens
+              gap: '10px',
+              height: 'calc(100vh - 100px)',
+              overflow: 'auto'
             }}>
               {['brandabschnitt3', 'brandabschnitt4', 'brandabschnitt5', 'brandabschnitt6'].map(area => (
                 <div 
@@ -1687,12 +1701,13 @@ const listStyle = {
 };
 
 const listItemStyle = {
-  padding: '8px',
+  padding: 'clamp(4px, 1vw, 8px)',  // Dynamic padding
   marginBottom: '5px',
   backgroundColor: '#f0f0f0',
   borderRadius: '4px',
   cursor: 'grab',
   userSelect: 'none',
+  fontSize: 'clamp(12px, 0.9vw, 14px)',  // Dynamic font size
   '&:active': {
     cursor: 'grabbing',
   },
